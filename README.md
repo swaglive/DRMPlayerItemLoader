@@ -35,3 +35,8 @@ pod 'DRMPlayerItemLoader', :git => 'https://github.com/swaglive/DRMPlayerItemLoa
 ```swift
     loader.load(with: self)
 ```
+
+## References
+- [Using AVFoundation to Play and Persist HTTP Live Streams](https://developer.apple.com/documentation/avfoundation/media_assets_playback_and_editing/using_avfoundation_to_play_and_persist_http_live_streams)
+
+- [Kaltura PlayKit Samples](https://github.com/kaltura/playkit-ios-samples)
