@@ -8,12 +8,28 @@
 
 /* Begin PBXBuildFile section */
 		D00D206F23F11FB400A2F5ED /* DRMPlayerItemLoader.h in Headers */ = {isa = PBXBuildFile; fileRef = D00D206D23F11FB300A2F5ED /* DRMPlayerItemLoader.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		D00D207C23F11FDC00A2F5ED /* AVFoundationErrorDomainExplain.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00D207623F11FDC00A2F5ED /* AVFoundationErrorDomainExplain.swift */; };
+		D00D207D23F11FDC00A2F5ED /* ContentKeyDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00D207723F11FDC00A2F5ED /* ContentKeyDelegate.swift */; };
+		D00D207E23F11FDC00A2F5ED /* ContentKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00D207823F11FDC00A2F5ED /* ContentKeyManager.swift */; };
+		D00D207F23F11FDC00A2F5ED /* AssetItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00D207923F11FDC00A2F5ED /* AssetItem.swift */; };
+		D00D208023F11FDC00A2F5ED /* PlayerItemLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00D207A23F11FDC00A2F5ED /* PlayerItemLoader.swift */; };
+		D00D208123F11FDC00A2F5ED /* ContentKeyDelegate+Persistable.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00D207B23F11FDC00A2F5ED /* ContentKeyDelegate+Persistable.swift */; };
+		D00D20E823F1294900A2F5ED /* FairPlayLicenseProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00D20E723F1294900A2F5ED /* FairPlayLicenseProvider.swift */; };
+		D00D20EA23F1296B00A2F5ED /* AVPlayerItem+extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00D20E923F1296B00A2F5ED /* AVPlayerItem+extension.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		D00D206A23F11FB300A2F5ED /* DRMPlayerItemLoader.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = DRMPlayerItemLoader.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D00D206D23F11FB300A2F5ED /* DRMPlayerItemLoader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DRMPlayerItemLoader.h; sourceTree = "<group>"; };
 		D00D206E23F11FB400A2F5ED /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		D00D207623F11FDC00A2F5ED /* AVFoundationErrorDomainExplain.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AVFoundationErrorDomainExplain.swift; sourceTree = "<group>"; };
+		D00D207723F11FDC00A2F5ED /* ContentKeyDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ContentKeyDelegate.swift; sourceTree = "<group>"; };
+		D00D207823F11FDC00A2F5ED /* ContentKeyManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ContentKeyManager.swift; sourceTree = "<group>"; };
+		D00D207923F11FDC00A2F5ED /* AssetItem.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AssetItem.swift; sourceTree = "<group>"; };
+		D00D207A23F11FDC00A2F5ED /* PlayerItemLoader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlayerItemLoader.swift; sourceTree = "<group>"; };
+		D00D207B23F11FDC00A2F5ED /* ContentKeyDelegate+Persistable.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "ContentKeyDelegate+Persistable.swift"; sourceTree = "<group>"; };
+		D00D20E723F1294900A2F5ED /* FairPlayLicenseProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FairPlayLicenseProvider.swift; sourceTree = "<group>"; };
+		D00D20E923F1296B00A2F5ED /* AVPlayerItem+extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AVPlayerItem+extension.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -46,10 +62,26 @@
 		D00D206C23F11FB300A2F5ED /* DRMPlayerItemLoader */ = {
 			isa = PBXGroup;
 			children = (
+				D00D207523F11FDC00A2F5ED /* Sources */,
 				D00D206D23F11FB300A2F5ED /* DRMPlayerItemLoader.h */,
 				D00D206E23F11FB400A2F5ED /* Info.plist */,
 			);
 			path = DRMPlayerItemLoader;
+			sourceTree = "<group>";
+		};
+		D00D207523F11FDC00A2F5ED /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				D00D207623F11FDC00A2F5ED /* AVFoundationErrorDomainExplain.swift */,
+				D00D207723F11FDC00A2F5ED /* ContentKeyDelegate.swift */,
+				D00D207823F11FDC00A2F5ED /* ContentKeyManager.swift */,
+				D00D207923F11FDC00A2F5ED /* AssetItem.swift */,
+				D00D207A23F11FDC00A2F5ED /* PlayerItemLoader.swift */,
+				D00D207B23F11FDC00A2F5ED /* ContentKeyDelegate+Persistable.swift */,
+				D00D20E723F1294900A2F5ED /* FairPlayLicenseProvider.swift */,
+				D00D20E923F1296B00A2F5ED /* AVPlayerItem+extension.swift */,
+			);
+			path = Sources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -131,6 +163,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D00D207D23F11FDC00A2F5ED /* ContentKeyDelegate.swift in Sources */,
+				D00D208123F11FDC00A2F5ED /* ContentKeyDelegate+Persistable.swift in Sources */,
+				D00D20EA23F1296B00A2F5ED /* AVPlayerItem+extension.swift in Sources */,
+				D00D208023F11FDC00A2F5ED /* PlayerItemLoader.swift in Sources */,
+				D00D20E823F1294900A2F5ED /* FairPlayLicenseProvider.swift in Sources */,
+				D00D207F23F11FDC00A2F5ED /* AssetItem.swift in Sources */,
+				D00D207C23F11FDC00A2F5ED /* AVFoundationErrorDomainExplain.swift in Sources */,
+				D00D207E23F11FDC00A2F5ED /* ContentKeyManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -188,7 +228,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -245,7 +285,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
@@ -276,8 +316,9 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.swaglive.DRMPlayerItemLoader;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -300,8 +341,9 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.swaglive.DRMPlayerItemLoader;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};

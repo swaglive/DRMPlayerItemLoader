@@ -1,0 +1,3 @@
+[submodule "python-certifi"]
+	path = python-certifi
+	url = git@github.com:certifi/python-certifi.git
