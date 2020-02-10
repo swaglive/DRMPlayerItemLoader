@@ -1,5 +1,12 @@
 # DRMPlayerItemLoader
 
+## Install
+specify it in `Podfile`
+```
+pod 'DRMPlayerItemLoader', :git => 'https://github.com/swaglive/DRMPlayerItemLoader.git'
+```
+
+## Usage
 1. Create FairPlayServer
 ```swift
     class FairPlayServer: FairPlayLicenseProvider {
