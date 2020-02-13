@@ -22,7 +22,7 @@ import AVFoundation
 @objcMembers
 @objc public class PlayerItemLoader: NSObject {
     private let urlString: String
-    private let defaultHeaders: [String: String]
+    private let assetOptions: [String : Any]?
     private let contentKey: String?
     
     public private(set) var assetItem: AssetItem?
@@ -38,9 +38,9 @@ import AVFoundation
 
     private var loadedObserver: NSKeyValueObservation?
 
-    public init(url: String, assetHeaders: [String: String] = [:], contentKey: String? = nil) {
+    public init(url: String, assetOptions: [String : Any]? = nil, contentKey: String? = nil) {
         urlString = url
-        defaultHeaders = assetHeaders
+        self.assetOptions = assetOptions
         self.contentKey = contentKey
         super.init()
     }
@@ -59,7 +59,7 @@ import AVFoundation
     
     private func loadAsset(url: URL) {
         readyForPlayback = false
-        let asset = AVURLAsset(url: url, options: defaultHeaders)
+        let asset = AVURLAsset(url: url, options: assetOptions)
         asset.resourceLoader.preloadsEligibleContentKeys = true
         let assetItem = AssetItem(persistableContentKey: contentKey, urlAsset: asset, playableHandler: { [weak self] (asset) in
             self?.didAssetPlayable(asset)
