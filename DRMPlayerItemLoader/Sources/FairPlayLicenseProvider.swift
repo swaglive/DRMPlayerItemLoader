@@ -12,6 +12,6 @@ import Foundation
     @objc func getLicense(spc: Data, assetId: String, url: URL, headers: [String:String],
                           callback: @escaping (_ ckc: Data?, _ offlineDuration: TimeInterval, _ error: Error?) -> Void)
     @objc func requestApplicationCertificate() -> Data
-    @objc func buildLicenseURL(identifier: String) -> String
+    @objc func buildLicenseURL(identifier: String) -> URL
 }
 

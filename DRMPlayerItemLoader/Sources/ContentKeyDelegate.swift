@@ -57,9 +57,8 @@ import AVFoundation
     func requestContentKeyFromKeySecurityModule(spcData: Data, assetID: String, callback: @escaping (Data?, TimeInterval, Error?) -> Void) {
         guard let licenseProvider = licenseProvider else { return }
         // MARK: ADAPT - You must implement this method to request a CKC from your KSM.
-        let url = URL(string: licenseProvider.buildLicenseURL(identifier: assetID))!
+        let url = licenseProvider.buildLicenseURL(identifier: assetID)
         licenseProvider.getLicense(spc: spcData, assetId: assetID, url: url, headers: [:], callback: callback)
-
     }
 
 

@@ -27,8 +27,8 @@ class FairPlayServer: FairPlayLicenseProvider {
             return Data(base64Encoded: certificateString)!
     }
     
-    func buildLicenseURL(identifier: String) -> String {
-        return "https://udrmv3.kaltura.com/fps/license?custom_data=eyJjYV9zeXN0ZW0iOiJPVlAiLCJ1c2VyX3Rva2VuIjoiZGpKOE1qSXlNalF3TVh6VlliX2pYYVFCUzd6VF9XZEdERW54MkpQbU5HVmNsYlVQWWhwenFCLUJJOTdod1Y5ekxGdG9hY1ZTM0J3bnV4cDBiZUhVa2x1WXd5MHp4MTRSRUxzU3VkR2s2cXVLS2FsRDJqWTcycC1CZGc9PSIsImFjY291bnRfaWQiOiIyMjIyNDAxIiwiY29udGVudF9pZCI6IjFfaTE4cmlodXYiLCJmaWxlcyI6IjFfbndvb2ZxdnIsMV8zejc1d3d4aSwxX2V4anQ1bGU4LDFfdXZiM2Z5cXMifQ%3D%3D&signature=Dhi6sWjfjWAsydjex5ExcigSIms%3D"
+    func buildLicenseURL(identifier: String) -> URL {
+        return URL(string: "https://udrmv3.kaltura.com/fps/license?custom_data=eyJjYV9zeXN0ZW0iOiJPVlAiLCJ1c2VyX3Rva2VuIjoiZGpKOE1qSXlNalF3TVh6VlliX2pYYVFCUzd6VF9XZEdERW54MkpQbU5HVmNsYlVQWWhwenFCLUJJOTdod1Y5ekxGdG9hY1ZTM0J3bnV4cDBiZUhVa2x1WXd5MHp4MTRSRUxzU3VkR2s2cXVLS2FsRDJqWTcycC1CZGc9PSIsImFjY291bnRfaWQiOiIyMjIyNDAxIiwiY29udGVudF9pZCI6IjFfaTE4cmlodXYiLCJmaWxlcyI6IjFfbndvb2ZxdnIsMV8zejc1d3d4aSwxX2V4anQ1bGU4LDFfdXZiM2Z5cXMifQ%3D%3D&signature=Dhi6sWjfjWAsydjex5ExcigSIms%3D")!
     }
     
     func getLicense(spc: Data, assetId: String, url: URL, headers: [String:String], callback: @escaping (Data?, TimeInterval, Error?) -> Void) {
@@ -74,21 +74,6 @@ class FairPlayServer: FairPlayLicenseProvider {
             }
         }
         dataTask.resume()
-    }
-}
-
-class MockFairPlayServer: FairPlayLicenseProvider {
-    func requestApplicationCertificate() -> Data {
-        return Data(base64Encoded: "")!
-    }
-    
-    func buildLicenseURL(identifier: String) -> String {
-        return ""
-    }
-    
-    func getLicense(spc: Data, assetId: String, url: URL, headers: [String : String], callback: @escaping (Data?, TimeInterval, Error?) -> Void) {
-        
-        callback(nil, 0, nil)
     }
 }
 
