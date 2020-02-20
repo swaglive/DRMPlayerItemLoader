@@ -31,7 +31,7 @@ class FairPlayServer: FairPlayLicenseProvider {
         return URL(string: "https://udrmv3.kaltura.com/fps/license?custom_data=eyJjYV9zeXN0ZW0iOiJPVlAiLCJ1c2VyX3Rva2VuIjoiZGpKOE1qSXlNalF3TVh6VlliX2pYYVFCUzd6VF9XZEdERW54MkpQbU5HVmNsYlVQWWhwenFCLUJJOTdod1Y5ekxGdG9hY1ZTM0J3bnV4cDBiZUhVa2x1WXd5MHp4MTRSRUxzU3VkR2s2cXVLS2FsRDJqWTcycC1CZGc9PSIsImFjY291bnRfaWQiOiIyMjIyNDAxIiwiY29udGVudF9pZCI6IjFfaTE4cmlodXYiLCJmaWxlcyI6IjFfbndvb2ZxdnIsMV8zejc1d3d4aSwxX2V4anQ1bGU4LDFfdXZiM2Z5cXMifQ%3D%3D&signature=Dhi6sWjfjWAsydjex5ExcigSIms%3D")!
     }
     
-    func getLicense(spc: Data, assetId: String, url: URL, headers: [String:String], callback: @escaping (Data?, TimeInterval, Error?) -> Void) {
+    func getLicense(spc: Data, assetId: String, url: URL, headers: [String:String], callback: @escaping (Data?, Error?) -> Void) {
         var request = URLRequest(url: url)
         for (header, value) in headers {
             request.setValue(value, forHTTPHeaderField: header)
@@ -51,7 +51,7 @@ class FairPlayServer: FairPlayLicenseProvider {
         let dataTask = URLSession.shared.dataTask(with: request) { (data: Data?, response: URLResponse?, error: Error?) -> Void in
             
             if let error = error {
-                callback(nil, 0, FPSServerError.drmServerError(error, url))
+                callback(nil, FPSServerError.drmServerError(error, url))
                 return
             }
             
@@ -60,17 +60,17 @@ class FairPlayServer: FairPlayLicenseProvider {
                 print("Got response in \(endTime-startTime) sec")
                 
                 guard let data = data else {
-                    callback(nil, 0, NSError(domain: "KalturaFairPlayLicenseProvider", code: 1, userInfo: nil))
+                    callback(nil, NSError(domain: "KalturaFairPlayLicenseProvider", code: 1, userInfo: nil))
                     return
                 }
                 
                 let lic = try JSONDecoder().decode(FairPlayServerResponseContainer.self, from: data)
                 print("persistence_duration: \(lic.persistence_duration)")
 
-                callback(Data(base64Encoded: lic.ckc ?? ""), lic.persistence_duration ?? 0, nil)
+                callback(Data(base64Encoded: lic.ckc ?? ""), nil)
                 
             } catch let e {
-                callback(nil, 0, e)
+                callback(nil, e)
             }
         }
         dataTask.resume()

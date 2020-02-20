@@ -54,7 +54,7 @@ import AVFoundation
     /// A dictionary mapping content key identifiers to their associated stream name.
     var contentKeyToStreamNameMap = [String: String]()
         
-    func requestContentKeyFromKeySecurityModule(spcData: Data, assetID: String, callback: @escaping (Data?, TimeInterval, Error?) -> Void) {
+    func requestContentKeyFromKeySecurityModule(spcData: Data, assetID: String, callback: @escaping (Data?, Error?) -> Void) {
         guard let licenseProvider = licenseProvider else { return }
         // MARK: ADAPT - You must implement this method to request a CKC from your KSM.
         let url = licenseProvider.buildLicenseURL(identifier: assetID)
@@ -223,7 +223,7 @@ import AVFoundation
                                                         
                                                         guard let spcData = data else { return }
                                                         
-                                                        self?.requestContentKeyFromKeySecurityModule(spcData: spcData, assetID: assetIDString) { (data, timeinterval, error) in
+                                                        self?.requestContentKeyFromKeySecurityModule(spcData: spcData, assetID: assetIDString) { (data, error) in
                                                             if let ckcData = data {
                                                                 let keyResponse = AVContentKeyResponse(fairPlayStreamingKeyResponseData: ckcData)
                                                                 keyRequest.processContentKeyResponse(keyResponse)

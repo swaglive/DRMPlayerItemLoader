@@ -9,8 +9,7 @@
 import Foundation
 
 @objc public protocol FairPlayLicenseProvider {
-    @objc func getLicense(spc: Data, assetId: String, url: URL, headers: [String:String],
-                          callback: @escaping (_ ckc: Data?, _ offlineDuration: TimeInterval, _ error: Error?) -> Void)
+    @objc func getLicense(spc: Data, assetId: String, url: URL, headers: [String:String], callback: @escaping (_ ckc: Data?, _ error: Error?) -> Void)
     @objc func requestApplicationCertificate() -> Data
     @objc func buildLicenseURL(identifier: String) -> URL
 }

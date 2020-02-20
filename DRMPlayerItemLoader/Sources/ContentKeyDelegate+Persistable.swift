@@ -154,7 +154,7 @@ extension ContentKeyDelegate {
     }
     
     func handlePersistableContentKey(keyRequest: AVPersistableContentKeyRequest, spcData: Data, assetID: String) {
-        requestContentKeyFromKeySecurityModule(spcData: spcData, assetID: assetID) { [weak self](data, timeinterval, error) in
+        requestContentKeyFromKeySecurityModule(spcData: spcData, assetID: assetID) { [weak self](data, error) in
             if let ckcData = data {
                 self?.persistableContentKey(keyRequest: keyRequest, ckcData: ckcData, assetID: assetID)
             }
