@@ -166,14 +166,12 @@ import AVFoundation
     
     private func handleStreamingContentKeyRequest(keyRequest: AVContentKeyRequest) {
         guard let contentKeyIdentifierString = keyRequest.identifier as? String,
-            let contentKeyIdentifierURL = URL(string: contentKeyIdentifierString),
-            let assetIDString = contentKeyIdentifierURL.host
+            let assetIDString = ContentKeyConstruct(key: contentKeyIdentifierString).identifier
             else {
                 print("Failed to retrieve the assetID from the keyRequest!")
                 return
         }
         print("contentKeyIdentifierString: \(contentKeyIdentifierString)")
-        print("contentKeyIdentifierURL: \(contentKeyIdentifierURL)")
         print("assetIDString: \(assetIDString)")
         
         print("shouldRequestPersistableContentKey: \(shouldRequestPersistableContentKey(withIdentifier: assetIDString))")
@@ -207,8 +205,7 @@ import AVFoundation
     private func provideOnlinekey(from keyRequest: AVContentKeyRequest) {
         guard let licenseProvider = licenseProvider,
             let contentKeyIdentifierString = keyRequest.identifier as? String,
-            let contentKeyIdentifierURL = URL(string: contentKeyIdentifierString),
-            let assetIDString = contentKeyIdentifierURL.host,
+            let assetIDString = ContentKeyConstruct(key: contentKeyIdentifierString).identifier,
             let assetIDData = assetIDString.data(using: .utf8)
             else {
                 print("Failed to retrieve the assetID from the keyRequest!")

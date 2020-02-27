@@ -8,17 +8,17 @@
 
 import AVFoundation
 
-extension AVPersistableContentKeyRequest {
-    var contentKeyIdentifierURL: URL? {
-        guard let identifier = identifier as? String else { return nil }
-        return URL(string: identifier)!
+struct ContentKeyConstruct {
+    let key: String?
+        
+    var isDRMContent: Bool {
+        return key?.hasPrefix("skd://") ?? false
     }
-    
-    var assetID: String? {
-        return contentKeyIdentifierURL?.host
+    var identifier: String? {
+        guard let text = key, isDRMContent else { return nil }
+        return String(text.dropFirst("skd://".count))
     }
 }
-
 
 extension ContentKeyDelegate {
     
@@ -60,8 +60,7 @@ extension ContentKeyDelegate {
          asset ID in this case is "key65".
          */
         guard let contentKeyIdentifierString = keyIdentifier as? String,
-            let contentKeyIdentifierURL = URL(string: contentKeyIdentifierString),
-            let assetIDString = contentKeyIdentifierURL.host
+            let assetIDString = ContentKeyConstruct(key: contentKeyIdentifierString).identifier
             else {
                 print("Failed to retrieve the assetID from the keyRequest!")
                 return
@@ -86,10 +85,13 @@ extension ContentKeyDelegate {
     
     
     func handlePersistableContentKeyRequest(keyRequest: AVPersistableContentKeyRequest) {
-        guard let assetIDString = keyRequest.assetID else {
+        guard let identifier = keyRequest.identifier as? String,
+            let assetIDString = ContentKeyConstruct(key: identifier).identifier
+            else {
             print("Failed to retrieve the assetID from the keyRequest!")
             return
         }
+        
         print("handlePersistableContentKeyRequest: \(assetIDString)")
         
         if persistableContentKeyExistsOnDisk(withContentKeyIdentifier: assetIDString) {
@@ -127,7 +129,8 @@ extension ContentKeyDelegate {
     
     func makeContentKeyRequest(keyRequest: AVPersistableContentKeyRequest) {
         guard let licenseProvider = licenseProvider,
-            let assetIDString = keyRequest.assetID,
+             let identifier = keyRequest.identifier as? String,
+                let assetIDString = ContentKeyConstruct(key: identifier).identifier,
             let assetIDData = assetIDString.data(using: .utf8)
             else {
                 print("Failed to retrieve the assetID from the keyRequest!")
