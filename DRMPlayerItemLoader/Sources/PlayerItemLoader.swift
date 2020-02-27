@@ -130,12 +130,25 @@ import AVFoundation
         return CGFloat( CMTimeGetSeconds(timeRange.duration) + CMTimeGetSeconds(timeRange.start) )
     }
     
-    
     public var currentTimeSeconds: CGFloat {
         guard let playerItem = playerItem else {
             return 0
         }
         return CGFloat( CMTimeGetSeconds(playerItem.currentTime()) )
+    }
+    
+    public var duration: CGFloat {
+        guard let playerItem = playerItem else {
+            return 0
+        }
+        return CGFloat( CMTimeGetSeconds(playerItem.duration) )
+    }
+    
+    public var playProgress: CGFloat {
+        guard duration > 0 else {
+            return 0
+        }
+       return currentTimeSeconds / duration
     }
 
 }
