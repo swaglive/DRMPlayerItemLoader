@@ -118,4 +118,24 @@ import AVFoundation
         guard let item = notification.object as? AVPlayerItem else { return }
         delegate?.didPlayToEndTime?(item)
     }
+    
+    var loadedTimeRangeSeconds: CGFloat {
+        guard let playerItem = playerItem,
+            playerItem.loadedTimeRanges.count > 0,
+            let timeRange = playerItem.loadedTimeRanges.first as? CMTimeRange
+            else {
+            return 0
+        }
+        
+        return CGFloat( CMTimeGetSeconds(timeRange.duration) + CMTimeGetSeconds(timeRange.start) )
+    }
+    
+    
+    var currentTimeSeconds: CGFloat {
+        guard let playerItem = playerItem else {
+            return 0
+        }
+        return CGFloat( CMTimeGetSeconds(playerItem.currentTime()) )
+    }
+
 }
