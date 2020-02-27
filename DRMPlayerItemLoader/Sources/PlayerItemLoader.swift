@@ -39,7 +39,7 @@ import AVFoundation
     private var playerItemObserver: NSKeyValueObservation?
 
     private var loadedObserver: NSKeyValueObservation?
-    private let contentKeyManager = ContentKeyManager()
+    private var contentKeyManager: ContentKeyManager?
 
     public init(identifier: String, url: String, assetOptions: [String : Any]? = nil, contentKey: String? = nil) {
         self.identifier = identifier
@@ -54,12 +54,13 @@ import AVFoundation
         NotificationCenter.default.removeObserver(self)
         loadedObserver?.invalidate()
         playerItemObserver?.invalidate()
+        print("[PlayerItemLoader deinit]")
     }
     
     public func load(with delegate: PlayerItemUpdateDelegate) {
         guard let url = URL(string: urlString) else { return }
         self.delegate = delegate
-        contentKeyManager.licenseProvider = delegate.licenseProvider
+        contentKeyManager = ContentKeyManager(licenseProvider: delegate.licenseProvider)
         loadAsset(url: url)
     }
     
@@ -68,9 +69,9 @@ import AVFoundation
         let asset = AVURLAsset(url: url, options: assetOptions)
         asset.resourceLoader.preloadsEligibleContentKeys = true
         
-        contentKeyManager.contentKeySession.addContentKeyRecipient(asset)
+        contentKeyManager?.contentKeySession.addContentKeyRecipient(asset)
         if let contentKey = contentKey {
-            contentKeyManager.contentKeyDelegate.requestPersistableContentKeys(for: contentKey)
+            contentKeyManager?.contentKeyDelegate.requestPersistableContentKeys(for: contentKey)
         }
 
         let assetItem = AssetItem(urlAsset: asset, playableHandler: { [weak self] (asset) in

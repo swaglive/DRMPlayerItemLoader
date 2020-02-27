@@ -9,12 +9,7 @@
 
 import AVFoundation
 
-@objcMembers
-@objc public class ContentKeyManager: NSObject {
-    
-    // MARK: Properties.
-    
-    /// The instance of `AVContentKeySession` that is used for managing and preloading content keys.
+struct ContentKeyManager {
     let contentKeySession: AVContentKeySession
     
     /**
@@ -26,21 +21,16 @@ import AVFoundation
     /// The DispatchQueue to use for delegate callbacks.
     let contentKeyDelegateQueue: DispatchQueue
     
-    
     // MARK: Initialization.
     
-    override init() {
+    init(licenseProvider: FairPlayLicenseProvider) {
         contentKeySession = AVContentKeySession(keySystem: .fairPlayStreaming)
         contentKeyDelegate = ContentKeyDelegate()
         contentKeyDelegate.contentKeySession = contentKeySession
+        contentKeyDelegate.licenseProvider = licenseProvider
         contentKeyDelegateQueue = DispatchQueue(label: "com.swag.contentKeyDelegateQueue-\(UUID().uuidString)")
         contentKeySession.setDelegate(contentKeyDelegate, queue: contentKeyDelegateQueue)
-        super.init()
+
     }
     
-    public weak var licenseProvider: FairPlayLicenseProvider? {
-        didSet {
-            contentKeyDelegate.licenseProvider = licenseProvider
-        }
-    }
 }
