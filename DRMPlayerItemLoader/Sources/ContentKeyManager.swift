@@ -12,11 +12,6 @@ import AVFoundation
 @objcMembers
 @objc public class ContentKeyManager: NSObject {
     
-    // MARK: Types.
-    
-    /// The singleton for `ContentKeyManager`.
-    public static let shared: ContentKeyManager = ContentKeyManager()
-    
     // MARK: Properties.
     
     /// The instance of `AVContentKeySession` that is used for managing and preloading content keys.
@@ -29,7 +24,7 @@ import AVFoundation
     let contentKeyDelegate: ContentKeyDelegate
     
     /// The DispatchQueue to use for delegate callbacks.
-    let contentKeyDelegateQueue = DispatchQueue(label: "com.swag.contentKeyDelegateQueue")
+    let contentKeyDelegateQueue: DispatchQueue
     
     
     // MARK: Initialization.
@@ -37,6 +32,8 @@ import AVFoundation
     override init() {
         contentKeySession = AVContentKeySession(keySystem: .fairPlayStreaming)
         contentKeyDelegate = ContentKeyDelegate()
+        contentKeyDelegate.contentKeySession = contentKeySession
+        contentKeyDelegateQueue = DispatchQueue(label: "com.swag.contentKeyDelegateQueue-\(UUID().uuidString)")
         contentKeySession.setDelegate(contentKeyDelegate, queue: contentKeyDelegateQueue)
         super.init()
     }

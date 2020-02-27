@@ -9,22 +9,14 @@ import AVFoundation
 
 @objcMembers
 @objc public class AssetItem: NSObject {
-    public let contentKey: String?
     /// The AVURLAsset corresponding to this Asset.
     public private(set) var asset: AVURLAsset
     /// The `NSKeyValueObservation` for the KVO on \AVURLAsset.isPlayable.
     private var urlAssetObserver: NSKeyValueObservation?
-    
-    init(persistableContentKey: String?, urlAsset: AVURLAsset, playableHandler: ((AVURLAsset) -> ())?) {
-        self.contentKey = persistableContentKey
+
+    init(urlAsset: AVURLAsset, playableHandler: ((AVURLAsset) -> ())?) {
         self.asset = urlAsset
         super.init()
-        
-        ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(urlAsset)
-        if let contentKey = contentKey {
-            ContentKeyManager.shared.contentKeyDelegate.requestPersistableContentKeys(for: contentKey)
-        }
-
         urlAssetObserver = urlAsset.observe(\AVURLAsset.isPlayable, options: [.new, .initial]) { [weak self](asset, _) in
             self?.asset = asset
             playableHandler?(asset)

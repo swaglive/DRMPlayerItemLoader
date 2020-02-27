@@ -17,6 +17,7 @@ import AVFoundation
     @objc optional func didAccessLogEntry(_ playerItem: AVPlayerItem, accessLog: AVPlayerItemAccessLogEvent)
     @objc optional func didPlayToEndTime(_ playerItem: AVPlayerItem)
     @objc optional func didDownloadProgress(_ progress: CGFloat)
+    @objc var licenseProvider: FairPlayLicenseProvider { get }
 }
 
 @objcMembers
@@ -24,7 +25,8 @@ import AVFoundation
     private let urlString: String
     private let assetOptions: [String : Any]?
     private let contentKey: String?
-    
+    public let identifier: String
+
     public private(set) var assetItem: AssetItem?
     public private(set) var playerItem: AVPlayerItem?
 
@@ -37,11 +39,14 @@ import AVFoundation
     private var playerItemObserver: NSKeyValueObservation?
 
     private var loadedObserver: NSKeyValueObservation?
+    private let contentKeyManager = ContentKeyManager()
 
-    public init(url: String, assetOptions: [String : Any]? = nil, contentKey: String? = nil) {
+    public init(identifier: String, url: String, assetOptions: [String : Any]? = nil, contentKey: String? = nil) {
+        self.identifier = identifier
         urlString = url
         self.assetOptions = assetOptions
         self.contentKey = contentKey
+
         super.init()
     }
     
@@ -54,6 +59,7 @@ import AVFoundation
     public func load(with delegate: PlayerItemUpdateDelegate) {
         guard let url = URL(string: urlString) else { return }
         self.delegate = delegate
+        contentKeyManager.licenseProvider = delegate.licenseProvider
         loadAsset(url: url)
     }
     
@@ -61,7 +67,13 @@ import AVFoundation
         readyForPlayback = false
         let asset = AVURLAsset(url: url, options: assetOptions)
         asset.resourceLoader.preloadsEligibleContentKeys = true
-        let assetItem = AssetItem(persistableContentKey: contentKey, urlAsset: asset, playableHandler: { [weak self] (asset) in
+        
+        contentKeyManager.contentKeySession.addContentKeyRecipient(asset)
+        if let contentKey = contentKey {
+            contentKeyManager.contentKeyDelegate.requestPersistableContentKeys(for: contentKey)
+        }
+
+        let assetItem = AssetItem(urlAsset: asset, playableHandler: { [weak self] (asset) in
             self?.didAssetPlayable(asset)
         })
         self.assetItem = assetItem

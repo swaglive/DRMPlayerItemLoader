@@ -12,7 +12,7 @@ import AVFoundation
 @objcMembers
 @objc public class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
     weak var licenseProvider: FairPlayLicenseProvider?
-
+    weak var contentKeySession: AVContentKeySession?
     // MARK: Types
     
     enum ProgramError: Error {
@@ -57,8 +57,7 @@ import AVFoundation
     func requestContentKeyFromKeySecurityModule(spcData: Data, assetID: String, callback: @escaping (Data?, Error?) -> Void) {
         guard let licenseProvider = licenseProvider else { return }
         // MARK: ADAPT - You must implement this method to request a CKC from your KSM.
-        let url = licenseProvider.buildLicenseURL(identifier: assetID)
-        licenseProvider.getLicense(spc: spcData, assetId: assetID, url: url, headers: [:], callback: callback)
+        licenseProvider.getLicense(spc: spcData, assetId: assetID, headers: [:], callback: callback)
     }
 
 
@@ -84,7 +83,7 @@ import AVFoundation
         pendingPersistableContentKeyIdentifiers.insert(assetIDString)
         contentKeyToStreamNameMap[assetIDString] = contentKey
         
-        ContentKeyManager.shared.contentKeySession.processContentKeyRequest(withIdentifier: contentKey, initializationData: nil, options: nil)
+        contentKeySession?.processContentKeyRequest(withIdentifier: contentKey, initializationData: nil, options: nil)
     }
     
     /// Returns whether or not a content key should be persistable on disk.
