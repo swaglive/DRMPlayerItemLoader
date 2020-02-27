@@ -23,7 +23,7 @@ struct ContentKeyManager {
     
     // MARK: Initialization.
     
-    init(licenseProvider: FairPlayLicenseProvider) {
+    init(licenseProvider: FairPlayLicenseProvider?) {
         contentKeySession = AVContentKeySession(keySystem: .fairPlayStreaming)
         contentKeyDelegate = ContentKeyDelegate()
         contentKeyDelegate.contentKeySession = contentKeySession

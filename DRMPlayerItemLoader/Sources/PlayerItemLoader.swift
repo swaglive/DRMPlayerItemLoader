@@ -17,7 +17,7 @@ import AVFoundation
     @objc optional func didAccessLogEntry(_ playerItem: AVPlayerItem, accessLog: AVPlayerItemAccessLogEvent)
     @objc optional func didPlayToEndTime(_ playerItem: AVPlayerItem)
     @objc optional func didDownloadProgress(_ progress: CGFloat)
-    @objc var licenseProvider: FairPlayLicenseProvider { get }
+    @objc var licenseProvider: FairPlayLicenseProvider? { get }
 }
 
 @objcMembers
