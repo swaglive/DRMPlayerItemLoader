@@ -119,7 +119,7 @@ import AVFoundation
         delegate?.didPlayToEndTime?(item)
     }
     
-    var loadedTimeRangeSeconds: CGFloat {
+    public var loadedTimeRangeSeconds: CGFloat {
         guard let playerItem = playerItem,
             playerItem.loadedTimeRanges.count > 0,
             let timeRange = playerItem.loadedTimeRanges.first as? CMTimeRange
@@ -131,7 +131,7 @@ import AVFoundation
     }
     
     
-    var currentTimeSeconds: CGFloat {
+    public var currentTimeSeconds: CGFloat {
         guard let playerItem = playerItem else {
             return 0
         }
