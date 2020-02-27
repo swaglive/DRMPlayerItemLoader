@@ -79,7 +79,7 @@ import AVFoundation
     ///
     /// - Parameter asset: The `Asset` to preload keys for.
     func requestPersistableContentKeys(for contentKey: String) {
-        guard let contentKeyIdentifierURL = URL(string: contentKey), let assetIDString = contentKeyIdentifierURL.host else { return }
+        guard let assetIDString = ContentKeyConstruct(key: contentKey).identifier else { return }
         
         pendingPersistableContentKeyIdentifiers.insert(assetIDString)
         contentKeyToStreamNameMap[assetIDString] = contentKey
@@ -211,6 +211,7 @@ import AVFoundation
                 print("Failed to retrieve the assetID from the keyRequest!")
                 return
         }
+        print("assetIDString: \(assetIDString)")
 
         let applicationCertificate = licenseProvider.requestApplicationCertificate()
         keyRequest.makeStreamingContentKeyRequestData(forApp: applicationCertificate,
