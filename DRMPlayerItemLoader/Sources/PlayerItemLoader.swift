@@ -25,7 +25,7 @@ import AVFoundation
     private let urlString: String
     private let assetOptions: [String : Any]?
     private let contentKey: String?
-    public let identifier: String
+    public let identifier: String?
 
     public private(set) var assetItem: AssetItem?
     public private(set) var playerItem: AVPlayerItem?
@@ -41,7 +41,7 @@ import AVFoundation
     private var loadedObserver: NSKeyValueObservation?
     private var contentKeyManager: ContentKeyManager?
 
-    public init(identifier: String, url: String, assetOptions: [String : Any]? = nil, contentKey: String? = nil) {
+    public init(identifier: String?, url: String, assetOptions: [String : Any]? = nil, contentKey: String? = nil) {
         self.identifier = identifier
         urlString = url
         self.assetOptions = assetOptions
