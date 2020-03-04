@@ -67,7 +67,6 @@ import AVFoundation
     private func loadAsset(url: URL) {
         readyForPlayback = false
         let asset = AVURLAsset(url: url, options: assetOptions)
-        asset.resourceLoader.preloadsEligibleContentKeys = true
         
         contentKeyManager?.contentKeySession.addContentKeyRecipient(asset)
         if let contentKey = contentKey {
