@@ -7,28 +7,28 @@ pod 'DRMPlayerItemLoader', :git => 'https://github.com/swaglive/DRMPlayerItemLoa
 ```
 
 ## Usage
-1. Create FairPlayServer
+1. Create FairPlayServer and confirm `FairPlayLicenseProvider`
 ```swift
     class FairPlayServer: FairPlayLicenseProvider {
     }
 ```
 
-2.  Assign to `ContentKeyManager`
-```swift
-    let fairplayServer = FairPlayServer()
-    ContentKeyManager.shared.licenseProvider = fairplayServer
-```
+2. confirm `PlayerItemUpdateDelegate`
 
-3. confirm `PlayerItemUpdateDelegate`
+3.  provide `FairPlayServer`
+```swift
+    licenseProvider = FairPlayServer(identifier: identifier)
+    
+```
 
 4. Create `PlayerItemLoader` with URL
 ```swift
-    let loader = PlayerItemLoader(url: contentURL)
+    let loader = PlayerItemLoader(identifier: identifier, url: contentURL, assetOptions: ["AVURLAssetHTTPHeaderFieldsKey": self.defaultHeaders])
 ```
 
   persistent CKC if needs
 ```swift
-    let loader = PlayerItemLoader(url: contentURL, contentKey: "skd://contentKey")
+    let loader = PlayerItemLoader(identifier: identifier, url: contentURL, assetOptions: ["AVURLAssetHTTPHeaderFieldsKey": self.defaultHeaders], contentKey: "skd://contentKey")
 ```
 
 5. Start loading with delegate
