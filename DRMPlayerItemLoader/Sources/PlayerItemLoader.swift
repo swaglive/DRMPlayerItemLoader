@@ -42,21 +42,15 @@ import AVFoundation
     private var loadedObserver: NSKeyValueObservation?
     private var contentKeyManager: ContentKeyManager?
 
+    /// Ther `renewTimer` is an optional timer for renew drm license. It can be invoke by
     private var renewTimer: Timer?
-    public init(
-        identifier: String?,
-        url: String,
-        assetOptions: [String : Any]? = nil,
-        contentKey: String? = nil,
-        renewInterval: TimeInterval = 540
-    ) {
+    public init(identifier: String?, url: String, assetOptions: [String : Any]? = nil, contentKey: String? = nil) {
         self.identifier = identifier
         urlString = url
         self.assetOptions = assetOptions
         self.contentKey = contentKey
 
         super.init()
-        setupRenewTimer(interval: renewInterval)
     }
     
     deinit {
@@ -72,6 +66,12 @@ import AVFoundation
         self.delegate = delegate
         contentKeyManager = ContentKeyManager(licenseProvider: delegate.licenseProvider)
         loadAsset(url: url)
+    }
+    
+    public func scheduleRenewProcess(interval: TimeInterval) {
+        let timer = Timer(timeInterval: interval, target: self, selector: #selector(renewTimerFired(timer:)), userInfo: nil, repeats: true)
+        renewTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
     }
     
     private func loadAsset(url: URL) {
@@ -126,13 +126,7 @@ import AVFoundation
         delegate?.didDownloadProgress?(progress)
     }
     
-    private func setupRenewTimer(interval: TimeInterval) {
-        let timer = Timer(timeInterval: interval, target: self, selector: #selector(renewTimerFired(timer:)), userInfo: nil, repeats: true)
-        renewTimer = timer
-        RunLoop.main.add(timer, forMode: .common)
-    }
-    
-    @objc func renewTimerFired(timer: Timer) {
+    @objc private func renewTimerFired(timer: Timer) {
         guard let item = playerItem else { return }
         delegate?.playerItemWillRenewLicense?(item)
         contentKeyManager?.contentKeyDelegate.renewLicense()

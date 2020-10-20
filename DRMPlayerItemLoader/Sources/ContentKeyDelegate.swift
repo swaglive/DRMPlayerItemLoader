@@ -14,13 +14,15 @@ import AVFoundation
     weak var licenseProvider: FairPlayLicenseProvider?
     weak var contentKeySession: AVContentKeySession?
     // MARK: Types
-    var previousRequest: AVContentKeyRequest?
     enum ProgramError: Error {
         case missingApplicationCertificate
         case noCKCReturnedByKSM
     }
     
     // MARK: Properties
+    
+    /// `previousRequest` is the previous license request, and stored it in order to renew next license.
+    private var previousRequest: AVContentKeyRequest?
     
     /// The directory that is used to save persistable content keys.
     lazy var contentKeyDirectory: URL = {
