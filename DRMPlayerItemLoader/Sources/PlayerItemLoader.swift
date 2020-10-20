@@ -56,7 +56,7 @@ import AVFoundation
         self.contentKey = contentKey
 
         super.init()
-        setupRenewTimer(interval: 15)
+        setupRenewTimer(interval: renewInterval)
     }
     
     deinit {
@@ -135,7 +135,7 @@ import AVFoundation
     @objc func renewTimerFired(timer: Timer) {
         guard let item = playerItem else { return }
         delegate?.playerItemWillRenewLicense?(item)
-        //TODO: renew drm Licence
+        contentKeyManager?.contentKeyDelegate.renewLicense()
     }
 
     @objc func onErrorLogEntryNotification(notification: Notification) {

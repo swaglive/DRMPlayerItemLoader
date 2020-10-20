@@ -14,7 +14,7 @@ import AVFoundation
     weak var licenseProvider: FairPlayLicenseProvider?
     weak var contentKeySession: AVContentKeySession?
     // MARK: Types
-    
+    var previousRequest: AVContentKeyRequest?
     enum ProgramError: Error {
         case missingApplicationCertificate
         case noCKCReturnedByKSM
@@ -211,7 +211,6 @@ import AVFoundation
                 return
         }
         print("assetIDString: \(assetIDString)")
-
         let applicationCertificate = licenseProvider.requestApplicationCertificate()
         keyRequest.makeStreamingContentKeyRequestData(forApp: applicationCertificate,
                                                       contentIdentifier: assetIDData,
@@ -219,7 +218,7 @@ import AVFoundation
                                                       completionHandler: {[weak self](data, error) in
                                                         
                                                         guard let spcData = data else { return }
-                                                        
+                                                        self?.previousRequest = keyRequest
                                                         self?.requestContentKeyFromKeySecurityModule(spcData: spcData, assetID: assetIDString) { (data, error) in
                                                             if let ckcData = data {
                                                                 let keyResponse = AVContentKeyResponse(fairPlayStreamingKeyResponseData: ckcData)
@@ -228,5 +227,10 @@ import AVFoundation
                                                         }
         })
         
+    }
+    
+    func renewLicense() {
+        guard let request = previousRequest else { return }
+        contentKeySession?.renewExpiringResponseData(for: request)
     }
 }
