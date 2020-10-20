@@ -17,6 +17,7 @@ import AVFoundation
     @objc optional func didAccessLogEntry(_ playerItem: AVPlayerItem, accessLog: AVPlayerItemAccessLogEvent)
     @objc optional func didPlayToEndTime(_ playerItem: AVPlayerItem)
     @objc optional func didDownloadProgress(_ progress: CGFloat)
+    @objc optional func playerItemWillRenewLicense(_ playerItem: AVPlayerItem)
     @objc var licenseProvider: FairPlayLicenseProvider? { get }
 }
 
@@ -41,6 +42,8 @@ import AVFoundation
     private var loadedObserver: NSKeyValueObservation?
     private var contentKeyManager: ContentKeyManager?
 
+    /// Ther `renewTimer` is an optional timer for renew drm license. It can be invoke by
+    private var renewTimer: Timer?
     public init(identifier: String?, url: String, assetOptions: [String : Any]? = nil, contentKey: String? = nil) {
         self.identifier = identifier
         urlString = url
@@ -54,6 +57,7 @@ import AVFoundation
         NotificationCenter.default.removeObserver(self)
         loadedObserver?.invalidate()
         playerItemObserver?.invalidate()
+        renewTimer?.invalidate()
         print("[PlayerItemLoader deinit]")
     }
     
@@ -62,6 +66,12 @@ import AVFoundation
         self.delegate = delegate
         contentKeyManager = ContentKeyManager(licenseProvider: delegate.licenseProvider)
         loadAsset(url: url)
+    }
+    
+    public func scheduleRenewProcess(interval: TimeInterval) {
+        let timer = Timer(timeInterval: interval, target: self, selector: #selector(renewTimerFired(timer:)), userInfo: nil, repeats: true)
+        renewTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
     }
     
     private func loadAsset(url: URL) {
@@ -114,6 +124,12 @@ import AVFoundation
         let progress: CGFloat = duration > 0 ? (CGFloat(loadedTimeRangeSeconds / duration)) : 0
 
         delegate?.didDownloadProgress?(progress)
+    }
+    
+    @objc private func renewTimerFired(timer: Timer) {
+        guard let item = playerItem else { return }
+        delegate?.playerItemWillRenewLicense?(item)
+        contentKeyManager?.contentKeyDelegate.renewLicense()
     }
 
     @objc func onErrorLogEntryNotification(notification: Notification) {

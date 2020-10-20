@@ -14,13 +14,15 @@ import AVFoundation
     weak var licenseProvider: FairPlayLicenseProvider?
     weak var contentKeySession: AVContentKeySession?
     // MARK: Types
-    
     enum ProgramError: Error {
         case missingApplicationCertificate
         case noCKCReturnedByKSM
     }
     
     // MARK: Properties
+    
+    /// `previousRequest` is the previous license request, and stored it in order to renew next license.
+    private var previousRequest: AVContentKeyRequest?
     
     /// The directory that is used to save persistable content keys.
     lazy var contentKeyDirectory: URL = {
@@ -211,7 +213,6 @@ import AVFoundation
                 return
         }
         print("assetIDString: \(assetIDString)")
-
         let applicationCertificate = licenseProvider.requestApplicationCertificate()
         keyRequest.makeStreamingContentKeyRequestData(forApp: applicationCertificate,
                                                       contentIdentifier: assetIDData,
@@ -219,7 +220,7 @@ import AVFoundation
                                                       completionHandler: {[weak self](data, error) in
                                                         
                                                         guard let spcData = data else { return }
-                                                        
+                                                        self?.previousRequest = keyRequest
                                                         self?.requestContentKeyFromKeySecurityModule(spcData: spcData, assetID: assetIDString) { (data, error) in
                                                             if let ckcData = data {
                                                                 let keyResponse = AVContentKeyResponse(fairPlayStreamingKeyResponseData: ckcData)
@@ -228,5 +229,10 @@ import AVFoundation
                                                         }
         })
         
+    }
+    
+    func renewLicense() {
+        guard let request = previousRequest else { return }
+        contentKeySession?.renewExpiringResponseData(for: request)
     }
 }
