@@ -232,7 +232,9 @@ import AVFoundation
     }
     
     func renewLicense() {
-        guard let request = previousRequest else { return }
+        guard let request = previousRequest,
+            request.status != .cancelled,
+            request.status != .failed else { return }
         contentKeySession?.renewExpiringResponseData(for: request)
     }
 }

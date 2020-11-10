@@ -54,11 +54,14 @@ import AVFoundation
     }
     
     deinit {
+        print("[PlayerItemLoader deinit]")
         NotificationCenter.default.removeObserver(self)
         loadedObserver?.invalidate()
         playerItemObserver?.invalidate()
+    }
+    
+    public func invalidateTimer() {
         renewTimer?.invalidate()
-        print("[PlayerItemLoader deinit]")
     }
     
     public func load(with delegate: PlayerItemUpdateDelegate) {
