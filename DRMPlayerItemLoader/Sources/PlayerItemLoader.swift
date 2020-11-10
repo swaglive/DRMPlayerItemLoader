@@ -55,13 +55,12 @@ import AVFoundation
     
     deinit {
         print("[PlayerItemLoader deinit]")
-    }
-    
-    /// when the playerItem is not needed, call this method to invalidate the observers and the timers.
-    public func cleanPlayerItemComponents() {
         NotificationCenter.default.removeObserver(self)
         loadedObserver?.invalidate()
         playerItemObserver?.invalidate()
+    }
+    
+    public func invalidateTimer() {
         renewTimer?.invalidate()
     }
     
