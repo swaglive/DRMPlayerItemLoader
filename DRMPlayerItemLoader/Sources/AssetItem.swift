@@ -25,8 +25,6 @@ import AVFoundation
     
     deinit {
         urlAssetObserver?.invalidate()
-        print("[AssetItem deinit]")
-
     }
     
 }

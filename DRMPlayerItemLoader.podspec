@@ -117,6 +117,7 @@ Pod::Spec.new do |spec|
   #  the lib prefix of their name.
   #
 
+  spec.dependency 'Logging', '~> 1.4'
   spec.framework  = "AVFoundation", "AVKit"
   # spec.frameworks = "SomeFramework", "AnotherFramework"
 

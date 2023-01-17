@@ -16,7 +16,6 @@ public struct AVFoundationErrorDomainExplain {
     public var description: String {
         let error = self.error as NSError
         if let reason = error.userInfo[NSLocalizedFailureReasonErrorKey] as? String {
-            print("[REASON]: \(reason)")
             return reason
             
         }
@@ -50,8 +49,7 @@ public struct AVFoundationErrorDomainExplain {
                     message = "The persistent key has expired."
                 default:
                     message = underlyingError.localizedDescription
-                }
-                print("[FPS Error] \(underlyingError.code) : \(message)")
+                }                
                 return message
             }
         }

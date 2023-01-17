@@ -7,18 +7,7 @@
  */
 
 import AVFoundation
-
-struct ContentKeyConstruct {
-    let key: String?
-        
-    var isDRMContent: Bool {
-        return key?.hasPrefix("skd://") ?? false
-    }
-    var identifier: String? {
-        guard let text = key, isDRMContent else { return nil }
-        return String(text.dropFirst("skd://".count))
-    }
-}
+import Logging
 
 extension ContentKeyDelegate {
     
@@ -52,26 +41,36 @@ extension ContentKeyDelegate {
      key to answer the key request. At that point, you will get sent an updated persistent key which
      is set to expire at the end of playback experiment which is 24 hours in this example.
      public */
-    public func contentKeySession(_ session: AVContentKeySession,
-                           didUpdatePersistableContentKey persistableContentKey: Data,
-                           forContentKeyIdentifier keyIdentifier: Any) {
+    public func contentKeySession(
+        _ session: AVContentKeySession,
+        didUpdatePersistableContentKey persistableContentKey: Data,
+        forContentKeyIdentifier keyIdentifier: Any
+    ) {
+        var logMeta: Logger.Metadata = [
+            "tag": "\(ContentKeyDelegate.tag)"
+        ]
+        logger.debug("Will update persistable key", metadata: logMeta)
         /*
          The key ID is the URI from the EXT-X-KEY tag in the playlist (e.g. "skd://key65") and the
          asset ID in this case is "key65".
          */
-        guard let contentKeyIdentifierString = keyIdentifier as? String,
-            let assetIDString = ContentKeyConstruct(key: contentKeyIdentifierString).identifier
+        guard
+            let keyString = keyIdentifier as? String,
+            let drmKey = DRMKeyID.from(key: keyString)
             else {
-                print("Failed to retrieve the assetID from the keyRequest!")
                 return
         }
-        
+        logMeta["key"] = .dictionary(drmKey.debugForm)
         do {
-            deletePeristableContentKey(withContentKeyIdentifier: assetIDString)
-            
-            try writePersistableContentKey(contentKey: persistableContentKey, withContentKeyIdentifier: assetIDString)
+            logger.debug("Will write persistable key", metadata: logMeta)
+            deletePeristableContentKey(withContentKeyIdentifier: drmKey.id)
+            try writePersistableContentKey(
+                contentKey: persistableContentKey,
+                withContentKeyIdentifier: drmKey.id
+            )
         } catch {
-            print("Failed to write updated persistable content key to disk: \(error.localizedDescription)")
+            logMeta["error"] = "\(error)"
+            logger.warning("Fail update persistable key", metadata: logMeta)
         }
     }
     
@@ -84,31 +83,25 @@ extension ContentKeyDelegate {
     /// - Parameter keyRequest: The `AVPersistableContentKeyRequest` to respond to.
     
     
-    func handlePersistableContentKeyRequest(keyRequest: AVPersistableContentKeyRequest) {
-        guard let identifier = keyRequest.identifier as? String,
-            let assetIDString = ContentKeyConstruct(key: identifier).identifier
-            else {
-            print("Failed to retrieve the assetID from the keyRequest!")
+    func handlePersistableContentKeyRequest(
+        keyRequest: AVPersistableContentKeyRequest
+    ) {
+        var logMeta = ContentKeyDelegate.logMeta
+        logMeta["request"] = "\(keyRequest)"
+        logger.debug("Will handle persistable key", metadata: logMeta)
+        guard let drmKey = DRMKeyID.from(keyRequest: keyRequest) else {
             return
         }
-        
-        print("handlePersistableContentKeyRequest: \(assetIDString)")
-        
-        if persistableContentKeyExistsOnDisk(withContentKeyIdentifier: assetIDString) {
-            
-            let urlToPersistableKey = urlForPersistableContentKey(withContentKeyIdentifier: assetIDString)
-            
+        if persistableContentKeyExistsOnDisk(withContentKeyIdentifier: drmKey.id) {
+            let urlToPersistableKey = urlForPersistableContentKey(withContentKeyIdentifier: drmKey.id)
             guard let contentKey = FileManager.default.contents(atPath: urlToPersistableKey.path) else {
                 // Error Handling.
-                
-                pendingPersistableContentKeyIdentifiers.remove(assetIDString)
-                
+                pendingPersistableContentKeyIdentifiers.remove(drmKey.id)
                 /*
                  Key requests should never be left dangling.
                  Attempt to create a new persistable key.
                  */
-                makeContentKeyRequest(keyRequest: keyRequest)
-                
+                makeContentKeyRequest(keyRequest: keyRequest, drmKey: drmKey)
                 return
             }
             
@@ -117,85 +110,121 @@ extension ContentKeyDelegate {
              decrypting content.
              */
             let keyResponse = AVContentKeyResponse(fairPlayStreamingKeyResponseData: contentKey)
-            
             // Provide the content key response to make protected content available for processing.
             keyRequest.processContentKeyResponse(keyResponse)
-            
+            logger.debug("Persistable key handled", metadata: logMeta)
             return
         }
-        makeContentKeyRequest(keyRequest: keyRequest)
-
+        makeContentKeyRequest(keyRequest: keyRequest, drmKey: drmKey)
     }
-    
-    func makeContentKeyRequest(keyRequest: AVPersistableContentKeyRequest) {
-        guard let licenseProvider = licenseProvider,
-             let identifier = keyRequest.identifier as? String,
-                let assetIDString = ContentKeyConstruct(key: identifier).identifier,
-            let assetIDData = assetIDString.data(using: .utf8)
-            else {
-                print("Failed to retrieve the assetID from the keyRequest!")
-                return
-        }
         
+    private func makeContentKeyRequest(
+        keyRequest: AVPersistableContentKeyRequest,
+        drmKey: DRMKeyID
+    ) {
+        var logMeta: Logger.Metadata = [
+            "tag": "\(ContentKeyDelegate.tag)",
+            "key": .dictionary(drmKey.debugForm)
+        ]
+        logger.debug("Will make key request", metadata: logMeta)
+        guard let licenseProvider = licenseProvider else {
+            logger.warning("Missing license provider", metadata: logMeta)
+            return
+        }
         let applicationCertificate = licenseProvider.requestApplicationCertificate()
-            
-        keyRequest.makeStreamingContentKeyRequestData(forApp: applicationCertificate,
-                                                      contentIdentifier: assetIDData,
-                                                      options: [AVContentKeyRequestProtocolVersionsKey: [1]],
-                                                      completionHandler: {[weak self](data, error) in
-                                                        if let error = error {
-                                                            keyRequest.processContentKeyResponseError(error)
-                                                            
-                                                            self?.pendingPersistableContentKeyIdentifiers.remove(assetIDString)
-                                                            return
-                                                        }
-                                                        guard let spcData = data else { return }
-                                                        self?.handlePersistableContentKey(keyRequest: keyRequest, spcData: spcData, assetID: assetIDString)
-                                                        
+        keyRequest.makeStreamingContentKeyRequestData(
+            forApp: applicationCertificate,
+            contentIdentifier: drmKey.data,
+            options: [AVContentKeyRequestProtocolVersionsKey: [1]],
+            completionHandler: {[weak self](data, error) in
+                if let error = error {
+                    keyRequest.processContentKeyResponseError(error)
+                    self?.pendingPersistableContentKeyIdentifiers.remove(drmKey.id)
+                    return
+                }
+                guard let spcData = data else {
+                    logger.warning("Missing spc data", metadata: logMeta)
+                    return
+                }
+                self?.handlePersistableContentKey(
+                    keyRequest: keyRequest,
+                    spcData: spcData,
+                    assetID: drmKey.id
+                )
         })
         
     }
     
-    func handlePersistableContentKey(keyRequest: AVPersistableContentKeyRequest, spcData: Data, assetID: String) {
-        requestContentKeyFromKeySecurityModule(spcData: spcData, assetID: assetID) { [weak self](data, error) in
-            if let ckcData = data {
-                self?.persistableContentKey(keyRequest: keyRequest, ckcData: ckcData, assetID: assetID)
+    func handlePersistableContentKey(
+        keyRequest: AVPersistableContentKeyRequest,
+        spcData: Data,
+        assetID: String
+    ) {
+        requestContentKeyFromKeySecurityModule(
+            spcData: spcData,
+            assetID: assetID
+        ) { [weak self] (data, error) in
+            var logMeta = ContentKeyDelegate.logMeta
+            guard let ckcData = data else {
+                if let error = error {
+                    logMeta["error"] = "\(error)"
+                }
+                logger.warning("Missing ckc data", metadata: logMeta)
+                return
             }
+            self?.persistableContentKey(keyRequest: keyRequest, ckcData: ckcData, assetID: assetID)
         }
     }
     
-    func persistableContentKey(keyRequest: AVPersistableContentKeyRequest, ckcData: Data, assetID: String) {
+    func persistableContentKey(
+        keyRequest: AVPersistableContentKeyRequest,
+        ckcData: Data,
+        assetID: String
+    ) {
         do {
             let persistentKey = try keyRequest.persistableContentKey(fromKeyVendorResponse: ckcData, options: nil)
-            try self.writePersistableContentKey(contentKey: persistentKey, withContentKeyIdentifier: assetID)
-            let keyResponse = AVContentKeyResponse(fairPlayStreamingKeyResponseData: persistentKey)
-            keyRequest.processContentKeyResponse(keyResponse)
-            
+            try writePersistableContentKey(
+                contentKey: persistentKey,
+                withContentKeyIdentifier: assetID
+            )
+            keyRequest.processContentKeyResponse(
+                AVContentKeyResponse(fairPlayStreamingKeyResponseData: persistentKey)
+            )
+
             let assetName = contentKeyToStreamNameMap.removeValue(forKey: assetID)!
-            
             if !contentKeyToStreamNameMap.values.contains(assetName) {
-                NotificationCenter.default.post(name: .DidSaveAllPersistableContentKey,
-                                                object: nil,
-                                                userInfo: ["name": assetName])
+                NotificationCenter.default.post(
+                    name: .DidSaveAllPersistableContentKey,
+                    object: nil,
+                    userInfo: ["name": assetName]
+                )
             }
-            
             pendingPersistableContentKeyIdentifiers.remove(assetID)
-            
         } catch {
             keyRequest.processContentKeyResponseError(error)
-            
             pendingPersistableContentKeyIdentifiers.remove(assetID)
         }
     }
     func deleteAllPeristableContentKeys() {
+        var logMeta: Logger.Metadata = [
+            "tag": "\(ContentKeyDelegate.tag)"
+        ]
         do {
-             let contents = try FileManager.default.contentsOfDirectory(at: contentKeyDirectory, includingPropertiesForKeys: nil, options: [])
+            logger.debug("Will retrieve keys to delete", metadata: logMeta)
+            let contents = try FileManager.default.contentsOfDirectory(
+                at: contentKeyDirectory,
+                includingPropertiesForKeys: nil,
+                options: []
+            )
+            logMeta["count"] = "\(contents.count)"
+            logger.debug("Will delete keys", metadata: logMeta)
             try contents.forEach{
-                print("delete file:" + $0.absoluteString)
+                logMeta["keyFile"] = "\($0)"
                 try FileManager.default.removeItem(at: $0)
             }
-        } catch let error {
-            print("delete error: \(error)")
+        } catch {
+            logMeta["error"] = "\(error)"
+            logger.warning("Delete keys failed", metadata: logMeta)
         }
 
     }
@@ -204,17 +233,17 @@ extension ContentKeyDelegate {
     ///
     /// - Parameter contentKeyIdentifier: The host value of an `AVPersistableContentKeyRequest`. (i.e. "tweleve" in "skd://tweleve").
     func deletePeristableContentKey(withContentKeyIdentifier contentKeyIdentifier: String) {
-        
+        var logMeta = ContentKeyDelegate.logMeta
+        logMeta["keyId"] = "\(contentKeyIdentifier)"
+        logger.debug("Will delete persistable key", metadata: logMeta)
         guard persistableContentKeyExistsOnDisk(withContentKeyIdentifier: contentKeyIdentifier) else { return }
-        
         let contentKeyURL = urlForPersistableContentKey(withContentKeyIdentifier: contentKeyIdentifier)
-        
         do {
             try FileManager.default.removeItem(at: contentKeyURL)
-            
             UserDefaults.standard.removeObject(forKey: "\(contentKeyIdentifier)-Key")
         } catch {
-            print("An error occured removing the persisted content key: \(error)")
+            logMeta["error"] = "\(error)"
+            logger.warning("Cannot delete persistable key", metadata: logMeta)
         }
     }
     
@@ -223,9 +252,9 @@ extension ContentKeyDelegate {
     /// - Parameter contentKeyIdentifier: The host value of an `AVPersistableContentKeyRequest`. (i.e. "tweleve" in "skd://tweleve").
     /// - Returns: `true` if the key exists on disk, `false` otherwise.
     func persistableContentKeyExistsOnDisk(withContentKeyIdentifier contentKeyIdentifier: String) -> Bool {
-        let contentKeyURL = urlForPersistableContentKey(withContentKeyIdentifier: contentKeyIdentifier)
-        
-        return FileManager.default.fileExists(atPath: contentKeyURL.path)
+        return FileManager.default.fileExists(
+            atPath: urlForPersistableContentKey(withContentKeyIdentifier: contentKeyIdentifier).path
+        )
     }
     
     // MARK: Private APIs
@@ -244,11 +273,14 @@ extension ContentKeyDelegate {
     ///   - contentKey: The data representation of the persistable content key.
     ///   - contentKeyIdentifier: The host value of an `AVPersistableContentKeyRequest`. (i.e. "tweleve" in "skd://tweleve").
     /// - Throws: If an error occurs during the file write process.
-    func writePersistableContentKey(contentKey: Data, withContentKeyIdentifier contentKeyIdentifier: String) throws {
-        
-        let fileURL = urlForPersistableContentKey(withContentKeyIdentifier: contentKeyIdentifier)
-        
-        try contentKey.write(to: fileURL, options: Data.WritingOptions.atomicWrite)
+    func writePersistableContentKey(
+        contentKey: Data,
+        withContentKeyIdentifier contentKeyIdentifier: String
+    ) throws {
+        try contentKey.write(
+            to: urlForPersistableContentKey(withContentKeyIdentifier: contentKeyIdentifier),
+            options: Data.WritingOptions.atomicWrite
+        )
     }
     
 }
