@@ -8,10 +8,15 @@
  */
 
 import AVFoundation
+import Logging
+
 
 @objcMembers
 @objc public class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
+    static let tag = "ContentKeyDelegate"
+    static let logMeta: Logger.Metadata = ["tag": "\(tag)"]
     weak var licenseProvider: FairPlayLicenseProvider?
+    var assetIDString: String?
     weak var contentKeySession: AVContentKeySession?
     // MARK: Types
     enum ProgramError: Error {
@@ -40,7 +45,6 @@ import AVFoundation
                 try FileManager.default.createDirectory(at: contentKeyDirectory,
                                                     withIntermediateDirectories: false,
                                                     attributes: nil)
-                print("content keys at path: \(contentKeyDirectory.path)")
             } catch {
                 fatalError("Unable to create directory for content keys at path: \(contentKeyDirectory.path)")
             }
@@ -80,11 +84,12 @@ import AVFoundation
     ///
     /// - Parameter asset: The `Asset` to preload keys for.
     func requestPersistableContentKeys(for contentKey: String) {
-        guard let assetIDString = ContentKeyConstruct(key: contentKey).identifier else { return }
-        
-        pendingPersistableContentKeyIdentifiers.insert(assetIDString)
-        contentKeyToStreamNameMap[assetIDString] = contentKey
-        
+        logger.debug("Request persistable keys", metadata: ContentKeyDelegate.logMeta)
+        guard let drmKey = DRMKeyID.from(key: contentKey) else {
+            return
+        }
+        pendingPersistableContentKeyIdentifiers.insert(drmKey.id)
+        contentKeyToStreamNameMap[drmKey.id] = contentKey
         contentKeySession?.processContentKeyRequest(withIdentifier: contentKey, initializationData: nil, options: nil)
     }
     
@@ -158,29 +163,42 @@ import AVFoundation
     }
     
     // Informs the receiver a content key request has failed.
-    public func contentKeySession(_ session: AVContentKeySession, contentKeyRequest keyRequest: AVContentKeyRequest, didFailWithError err: Error) {
-        // Add your code here to handle errors.
-        print("ERROR" + AVFoundationErrorDomainExplain(error: err).description)
+    public func contentKeySession(
+        _ session: AVContentKeySession,
+        contentKeyRequest keyRequest: AVContentKeyRequest,
+        didFailWithError err: Error
+    ) {
+        logger.warning(
+            "Key request failed",
+            metadata: [
+                "tag": "\(ContentKeyDelegate.tag)",
+                "request": "\(keyRequest)",
+                "error": "\(AVFoundationErrorDomainExplain(error: err).description)"
+            ]
+        )
     }
     
     // MARK: API
     
     private func handleStreamingContentKeyRequest(keyRequest: AVContentKeyRequest) {
-        guard let contentKeyIdentifierString = keyRequest.identifier as? String,
-            let assetIDString = ContentKeyConstruct(key: contentKeyIdentifierString).identifier
-            else {
-                print("Failed to retrieve the assetID from the keyRequest!")
+        logger.debug(
+            "Handle key request",
+            metadata: ContentKeyDelegate.logMeta
+        )
+        guard let drmKey = DRMKeyID.from(keyRequest: keyRequest) else {
                 return
         }
-        print("contentKeyIdentifierString: \(contentKeyIdentifierString)")
-        print("assetIDString: \(assetIDString)")
+        let isKeyExistsOnDisk = persistableContentKeyExistsOnDisk(withContentKeyIdentifier: drmKey.id)
+        let shouldRequestKey = shouldRequestPersistableContentKey(withIdentifier: drmKey.id)
+        var meta: Logger.Metadata = [
+            "tag": "\(ContentKeyDelegate.tag)",
+            "key": .dictionary(drmKey.debugForm),
+            "isKeyExistsOnDisk": "\(isKeyExistsOnDisk)",
+            "shouldRequestKey": "\(shouldRequestKey)",
+        ]
         
-        print("shouldRequestPersistableContentKey: \(shouldRequestPersistableContentKey(withIdentifier: assetIDString))")
-        print("persistableContentKeyExistsOnDisk: \(persistableContentKeyExistsOnDisk(withContentKeyIdentifier: assetIDString))")
-
-        if shouldRequestPersistableContentKey(withIdentifier: assetIDString) ||
-            persistableContentKeyExistsOnDisk(withContentKeyIdentifier: assetIDString) {
-            
+        if shouldRequestKey || isKeyExistsOnDisk {
+            logger.debug("Request persistable key", metadata: meta)
             // Request a Persistable Key Request.
             do {
                 if #available(iOS 11.2, *) {
@@ -189,47 +207,70 @@ import AVFoundation
                     keyRequest.respondByRequestingPersistableContentKeyRequest()
                 }
             } catch {
-
+                meta["error"] = "\(error)"
+                logger.debug("Request persistable key failed", metadata: meta)
                 /*
                 This case will occur when the client gets a key loading request from an AirPlay Session.
                 You should answer the key request using an online key from your key server.
                 */
-                provideOnlinekey(from: keyRequest)
+                provideOnlinekey(from: keyRequest, with: drmKey)
             }
             
             return
         }
-        provideOnlinekey(from: keyRequest)
+        logger.debug("Skip request persistable key", metadata: meta)
+        provideOnlinekey(from: keyRequest, with: drmKey)
 
     }
 
-    private func provideOnlinekey(from keyRequest: AVContentKeyRequest) {
-        guard let licenseProvider = licenseProvider,
-            let contentKeyIdentifierString = keyRequest.identifier as? String,
-            let assetIDString = ContentKeyConstruct(key: contentKeyIdentifierString).identifier,
-            let assetIDData = assetIDString.data(using: .utf8)
-            else {
-                print("Failed to retrieve the assetID from the keyRequest!")
-                return
+    private func provideOnlinekey(
+        from keyRequest: AVContentKeyRequest,
+        with key: DRMKeyID
+    ) {
+        var logMeta = ContentKeyDelegate.logMeta
+        logMeta["key"] = .dictionary(key.debugForm)
+        logger.debug("Will provide online key", metadata: logMeta)
+        guard let licenseProvider = licenseProvider else {
+            logger.warning(
+                "Cannot provide online key",
+                metadata: ["reason": "Missing license provider"]
+            )
+            return
         }
-        print("assetIDString: \(assetIDString)")
-        let applicationCertificate = licenseProvider.requestApplicationCertificate()
-        keyRequest.makeStreamingContentKeyRequestData(forApp: applicationCertificate,
-                                                      contentIdentifier: assetIDData,
-                                                      options: [AVContentKeyRequestProtocolVersionsKey: [1]],
-                                                      completionHandler: {[weak self](data, error) in
-                                                        
-                                                        guard let spcData = data else { return }
-                                                        self?.previousRequest = keyRequest
-                                                        self?.requestContentKeyFromKeySecurityModule(spcData: spcData, assetID: assetIDString) { (data, error) in
-                                                            if let ckcData = data {
-                                                                let keyResponse = AVContentKeyResponse(fairPlayStreamingKeyResponseData: ckcData)
-                                                                keyRequest.processContentKeyResponse(keyResponse)
-                                                            }
-                                                        }
-        })
         
+        let applicationCertificate = licenseProvider.requestApplicationCertificate()
+        keyRequest.makeStreamingContentKeyRequestData(
+            forApp: applicationCertificate,
+            contentIdentifier: key.data,
+            options: [AVContentKeyRequestProtocolVersionsKey: [1]],
+            completionHandler: {[weak self](data, error) in
+                guard let spcData = data else {
+                    if let error = error {
+                        logMeta["error"] = "\(error)"
+                    }
+                    logger.warning("Cannot get spc data", metadata: logMeta)
+                    return
+                }
+                self?.previousRequest = keyRequest
+                self?.requestContentKeyFromKeySecurityModule(
+                    spcData: spcData,
+                    assetID: key.id
+                ) { (data, error) in
+                    guard let ckcData = data else {
+                        if let error = error {
+                            logMeta["error"] = "\(error)"
+                        }
+                        logger.warning("Cannot get ckc data", metadata: logMeta)
+                        return
+                    }
+                    keyRequest.processContentKeyResponse(
+                        AVContentKeyResponse(fairPlayStreamingKeyResponseData: ckcData)
+                    )
+                }
+            }
+        )
     }
+    
     
     func renewLicense() {
         guard let request = previousRequest,

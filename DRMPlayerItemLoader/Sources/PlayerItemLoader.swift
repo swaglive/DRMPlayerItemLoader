@@ -9,6 +9,9 @@
 import Foundation
 import AVKit
 import AVFoundation
+import Logging
+
+let logger = Logger(label: Bundle.main.bundleIdentifier ?? "drmPlayer")
 
 @objc public protocol PlayerItemUpdateDelegate: NSObjectProtocol {
     @objc func didStatusChange(_ playerItem: AVPlayerItem, status: AVPlayerItem.Status)
@@ -53,8 +56,7 @@ import AVFoundation
         super.init()
     }
     
-    deinit {
-        print("[PlayerItemLoader deinit]")
+    deinit {        
         NotificationCenter.default.removeObserver(self)
         loadedObserver?.invalidate()
         playerItemObserver?.invalidate()
