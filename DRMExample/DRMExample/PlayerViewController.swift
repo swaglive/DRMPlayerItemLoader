@@ -87,7 +87,7 @@ extension PlayerViewController: PlayerItemUpdateDelegate {
         case .failed:
         // Player item failed. See error.
             if let error = playerItem.error {
-                print("[PlayerItem Error]:\(AVFoundationErrorDomainExplain(error: error).description)")
+                print("[PlayerItem Error]:\(AVFoundationErrorDomainExplain.description(for: error as NSError))")
             }
         case .unknown:
             // Player item is not yet ready.

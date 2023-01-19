@@ -1,7 +1,7 @@
 /*
  Copyright (C) 2017 Apple Inc. All Rights Reserved.
  See LICENSE.txt for this sample’s licensing information
- 
+
  Abstract:
  This extension on `ContentKeyDelegate` implements the `AVContentKeySessionDelegate` protocol methods related to persistable content keys.
  */
@@ -10,7 +10,6 @@ import AVFoundation
 import Logging
 
 extension ContentKeyDelegate {
-    
     /*
      Provides the receiver with a new content key request that allows key persistence.
      Will be invoked by an AVContentKeyRequest as the result of a call to
@@ -19,20 +18,20 @@ extension ContentKeyDelegate {
     public func contentKeySession(_ session: AVContentKeySession, didProvide keyRequest: AVPersistableContentKeyRequest) {
         handlePersistableContentKeyRequest(keyRequest: keyRequest)
     }
-    
+
     /*
      Provides the receiver with an updated persistable content key for a particular key request.
      If the content key session provides an updated persistable content key data, the previous
      key data is no longer valid and cannot be used to answer future loading requests.
-     
+
      This scenario can occur when using the FPS "dual expiry" feature which allows you to define
      and customize two expiry windows for FPS persistent keys. The first window is the storage
      expiry window which starts as soon as the persistent key is created. The other window is a
      playback expiry window which starts when the persistent key is used to start the playback
      of the media content.
-     
+
      Here's an example:
-     
+
      When the user rents a movie to play offline you would create a persistent key with a CKC that
      opts in to use this feature. This persistent key is said to expire at the end of storage expiry
      window which is 30 days in this example. You would store this persistent key in your apps storage
@@ -46,9 +45,7 @@ extension ContentKeyDelegate {
         didUpdatePersistableContentKey persistableContentKey: Data,
         forContentKeyIdentifier keyIdentifier: Any
     ) {
-        var logMeta: Logger.Metadata = [
-            "tag": "\(ContentKeyDelegate.tag)"
-        ]
+        var logMeta = ContentKeyDelegate.logMeta
         logger.debug("Will update persistable key", metadata: logMeta)
         /*
          The key ID is the URI from the EXT-X-KEY tag in the playlist (e.g. "skd://key65") and the
@@ -57,8 +54,8 @@ extension ContentKeyDelegate {
         guard
             let keyString = keyIdentifier as? String,
             let drmKey = DRMKeyID.from(key: keyString)
-            else {
-                return
+        else {
+            return
         }
         logMeta["key"] = .dictionary(drmKey.debugForm)
         do {
@@ -73,16 +70,15 @@ extension ContentKeyDelegate {
             logger.warning("Fail update persistable key", metadata: logMeta)
         }
     }
-    
+
     // MARK: API.
-    
+
     /// Handles responding to an `AVPersistableContentKeyRequest` by determining if a key is already available for use on disk.
     /// If no key is available on disk, a persistable key is requested from the server and securely written to disk for use in the future.
     /// In both cases, the resulting content key is used as a response for the `AVPersistableContentKeyRequest`.
     ///
     /// - Parameter keyRequest: The `AVPersistableContentKeyRequest` to respond to.
-    
-    
+
     func handlePersistableContentKeyRequest(
         keyRequest: AVPersistableContentKeyRequest
     ) {
@@ -104,7 +100,7 @@ extension ContentKeyDelegate {
                 makeContentKeyRequest(keyRequest: keyRequest, drmKey: drmKey)
                 return
             }
-            
+
             /*
              Create an AVContentKeyResponse from the persistent key data to use for requesting a key for
              decrypting content.
@@ -117,15 +113,13 @@ extension ContentKeyDelegate {
         }
         makeContentKeyRequest(keyRequest: keyRequest, drmKey: drmKey)
     }
-        
+
     private func makeContentKeyRequest(
         keyRequest: AVPersistableContentKeyRequest,
         drmKey: DRMKeyID
     ) {
-        var logMeta: Logger.Metadata = [
-            "tag": "\(ContentKeyDelegate.tag)",
-            "key": .dictionary(drmKey.debugForm)
-        ]
+        var logMeta = ContentKeyDelegate.logMeta
+        logMeta["key"] = .dictionary(drmKey.debugForm)
         logger.debug("Will make key request", metadata: logMeta)
         guard let licenseProvider = licenseProvider else {
             logger.warning("Missing license provider", metadata: logMeta)
@@ -136,7 +130,7 @@ extension ContentKeyDelegate {
             forApp: applicationCertificate,
             contentIdentifier: drmKey.data,
             options: [AVContentKeyRequestProtocolVersionsKey: [1]],
-            completionHandler: {[weak self](data, error) in
+            completionHandler: { [weak self] data, error in
                 if let error = error {
                     keyRequest.processContentKeyResponseError(error)
                     self?.pendingPersistableContentKeyIdentifiers.remove(drmKey.id)
@@ -151,10 +145,9 @@ extension ContentKeyDelegate {
                     spcData: spcData,
                     assetID: drmKey.id
                 )
-        })
-        
+            })
     }
-    
+
     func handlePersistableContentKey(
         keyRequest: AVPersistableContentKeyRequest,
         spcData: Data,
@@ -163,7 +156,7 @@ extension ContentKeyDelegate {
         requestContentKeyFromKeySecurityModule(
             spcData: spcData,
             assetID: assetID
-        ) { [weak self] (data, error) in
+        ) { [weak self] data, error in
             var logMeta = ContentKeyDelegate.logMeta
             guard let ckcData = data else {
                 if let error = error {
@@ -175,7 +168,7 @@ extension ContentKeyDelegate {
             self?.persistableContentKey(keyRequest: keyRequest, ckcData: ckcData, assetID: assetID)
         }
     }
-    
+
     func persistableContentKey(
         keyRequest: AVPersistableContentKeyRequest,
         ckcData: Data,
@@ -205,9 +198,10 @@ extension ContentKeyDelegate {
             pendingPersistableContentKeyIdentifiers.remove(assetID)
         }
     }
+
     func deleteAllPeristableContentKeys() {
         var logMeta: Logger.Metadata = [
-            "tag": "\(ContentKeyDelegate.tag)"
+            "tag": "\(ContentKeyDelegate.tag)",
         ]
         do {
             logger.debug("Will retrieve keys to delete", metadata: logMeta)
@@ -218,7 +212,7 @@ extension ContentKeyDelegate {
             )
             logMeta["count"] = "\(contents.count)"
             logger.debug("Will delete keys", metadata: logMeta)
-            try contents.forEach{
+            try contents.forEach {
                 logMeta["keyFile"] = "\($0)"
                 try FileManager.default.removeItem(at: $0)
             }
@@ -226,9 +220,8 @@ extension ContentKeyDelegate {
             logMeta["error"] = "\(error)"
             logger.warning("Delete keys failed", metadata: logMeta)
         }
-
     }
-    
+
     /// Deletes a persistable key for a given content key identifier.
     ///
     /// - Parameter contentKeyIdentifier: The host value of an `AVPersistableContentKeyRequest`. (i.e. "tweleve" in "skd://tweleve").
@@ -246,7 +239,7 @@ extension ContentKeyDelegate {
             logger.warning("Cannot delete persistable key", metadata: logMeta)
         }
     }
-    
+
     /// Returns whether or not a persistable content key exists on disk for a given content key identifier.
     ///
     /// - Parameter contentKeyIdentifier: The host value of an `AVPersistableContentKeyRequest`. (i.e. "tweleve" in "skd://tweleve").
@@ -256,9 +249,9 @@ extension ContentKeyDelegate {
             atPath: urlForPersistableContentKey(withContentKeyIdentifier: contentKeyIdentifier).path
         )
     }
-    
+
     // MARK: Private APIs
-    
+
     /// Returns the `URL` for persisting or retrieving a persistable content key.
     ///
     /// - Parameter contentKeyIdentifier: The host value of an `AVPersistableContentKeyRequest`. (i.e. "tweleve" in "skd://tweleve").
@@ -266,7 +259,7 @@ extension ContentKeyDelegate {
     func urlForPersistableContentKey(withContentKeyIdentifier contentKeyIdentifier: String) -> URL {
         return contentKeyDirectory.appendingPathComponent("\(contentKeyIdentifier)-Key")
     }
-    
+
     /// Writes out a persistable content key to disk.
     ///
     /// - Parameters:
@@ -282,11 +275,9 @@ extension ContentKeyDelegate {
             options: Data.WritingOptions.atomicWrite
         )
     }
-    
 }
 
 extension Notification.Name {
-    
     /**
      The notification that is posted when all the content keys for a given asset have been saved to disk.
      */

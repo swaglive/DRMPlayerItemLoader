@@ -1,7 +1,7 @@
 /*
  Copyright (C) 2017 Apple Inc. All Rights Reserved.
  See LICENSE.txt for this sample’s licensing information
- 
+
  Abstract:
  `ContentKeyDelegate` is a class that implements the `AVContentKeySessionDelegate` protocol to respond to content key
  requests using FairPlay Streaming.
@@ -10,62 +10,73 @@
 import AVFoundation
 import Logging
 
-
 @objcMembers
 @objc public class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
-    static let tag = "ContentKeyDelegate"
+    static let tag = "DRM Key Delegate"
     static let logMeta: Logger.Metadata = ["tag": "\(tag)"]
     weak var licenseProvider: FairPlayLicenseProvider?
-    var assetIDString: String?
     weak var contentKeySession: AVContentKeySession?
+
     // MARK: Types
+
     enum ProgramError: Error {
         case missingApplicationCertificate
         case noCKCReturnedByKSM
     }
-    
+
     // MARK: Properties
-    
+
     /// `previousRequest` is the previous license request, and stored it in order to renew next license.
     private var previousRequest: AVContentKeyRequest?
-    
+
     /// The directory that is used to save persistable content keys.
     lazy var contentKeyDirectory: URL = {
-        guard let documentPath =
-            NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first else {
-                fatalError("Unable to determine library URL")
+        guard let docDir = NSSearchPathForDirectoriesInDomains(
+            .documentDirectory, .userDomainMask, true
+        ).first else {
+            fatalError("Unable to determine library URL")
         }
-        
-        let documentURL = URL(fileURLWithPath: documentPath)
-        
-        let contentKeyDirectory = documentURL.appendingPathComponent(".keys", isDirectory: true)
-        
-        if !FileManager.default.fileExists(atPath: contentKeyDirectory.path, isDirectory: nil) {
-            do {
-                try FileManager.default.createDirectory(at: contentKeyDirectory,
-                                                    withIntermediateDirectories: false,
-                                                    attributes: nil)
-            } catch {
-                fatalError("Unable to create directory for content keys at path: \(contentKeyDirectory.path)")
-            }
+
+        let keyDir = URL(fileURLWithPath: docDir)
+            .appendingPathComponent(".keys", isDirectory: true)
+        if FileManager.default.fileExists(atPath: keyDir.path, isDirectory: nil) {
+            return keyDir
         }
-        
-        return contentKeyDirectory
+        do {
+            try FileManager.default.createDirectory(
+                at: keyDir,
+                withIntermediateDirectories: true,
+                attributes: nil
+            )
+            return keyDir
+        } catch {
+            fatalError("Unable to create directory for content keys at path: \(keyDir.path)")
+        }
+
     }()
-    
 
     /// A set containing the currently pending content key identifiers associated with persistable content key requests that have not been completed.
     var pendingPersistableContentKeyIdentifiers = Set<String>()
-    
+
     /// A dictionary mapping content key identifiers to their associated stream name.
     var contentKeyToStreamNameMap = [String: String]()
-        
-    func requestContentKeyFromKeySecurityModule(spcData: Data, assetID: String, callback: @escaping (Data?, Error?) -> Void) {
-        guard let licenseProvider = licenseProvider else { return }
-        // MARK: ADAPT - You must implement this method to request a CKC from your KSM.
-        licenseProvider.getLicense(spc: spcData, assetId: assetID, headers: [:], callback: callback)
-    }
 
+    func requestContentKeyFromKeySecurityModule(spcData: Data, assetID: String, callback: @escaping (Data?, Error?) -> Void) {
+        guard let licenseProvider = licenseProvider else {
+            logger.warning(
+                "Missing license provider",
+                metadata: ContentKeyDelegate.logMeta
+            )
+            assertionFailure("Missing license provider")
+            return
+        }
+        licenseProvider.getLicense(
+            spc: spcData,
+            assetId: assetID,
+            headers: [:],
+            callback: callback
+        )
+    }
 
     /// Preloads all the content keys associated with an Asset for persisting on disk.
     ///
@@ -90,9 +101,13 @@ import Logging
         }
         pendingPersistableContentKeyIdentifiers.insert(drmKey.id)
         contentKeyToStreamNameMap[drmKey.id] = contentKey
-        contentKeySession?.processContentKeyRequest(withIdentifier: contentKey, initializationData: nil, options: nil)
+        contentKeySession?.processContentKeyRequest(
+            withIdentifier: contentKey,
+            initializationData: nil,
+            options: nil
+        )
     }
-    
+
     /// Returns whether or not a content key should be persistable on disk.
     ///
     /// - Parameter identifier: The asset ID associated with the content key request.
@@ -100,25 +115,31 @@ import Logging
     func shouldRequestPersistableContentKey(withIdentifier identifier: String) -> Bool {
         return pendingPersistableContentKeyIdentifiers.contains(identifier)
     }
-    
+
     // MARK: AVContentKeySessionDelegate Methods
-    
+
     /*
      The following delegate callback gets called when the client initiates a key request or AVFoundation
      determines that the content is encrypted based on the playlist the client provided when it requests playback.
      */
-    public func contentKeySession(_ session: AVContentKeySession, didProvide keyRequest: AVContentKeyRequest) {
+    public func contentKeySession(
+        _ session: AVContentKeySession,
+        didProvide keyRequest: AVContentKeyRequest
+    ) {
         handleStreamingContentKeyRequest(keyRequest: keyRequest)
     }
-    
+
     /*
      Provides the receiver with a new content key request representing a renewal of an existing content key.
      Will be invoked by an AVContentKeySession as the result of a call to -renewExpiringResponseDataForContentKeyRequest:.
      */
-    public func contentKeySession(_ session: AVContentKeySession, didProvideRenewingContentKeyRequest keyRequest: AVContentKeyRequest) {
+    public func contentKeySession(
+        _ session: AVContentKeySession,
+        didProvideRenewingContentKeyRequest keyRequest: AVContentKeyRequest
+    ) {
         handleStreamingContentKeyRequest(keyRequest: keyRequest)
     }
-    
+
     /*
      Provides the receiver a content key request that should be retried because a previous content key request failed.
      Will be invoked by an AVContentKeySession when a content key request should be retried. The reason for failure of
@@ -128,40 +149,42 @@ import Logging
      request would fail and AVContentKeySession would let the receiver know through
      -contentKeySession:contentKeyRequest:didFailWithError:.
      */
-    public func contentKeySession(_ session: AVContentKeySession, shouldRetry keyRequest: AVContentKeyRequest,
-                           reason retryReason: AVContentKeyRequest.RetryReason) -> Bool {
-        
+    public func contentKeySession(
+        _ session: AVContentKeySession,
+        shouldRetry keyRequest: AVContentKeyRequest,
+        reason retryReason: AVContentKeyRequest.RetryReason
+    ) -> Bool {
         var shouldRetry = false
-        
+
         switch retryReason {
-            /*
-             Indicates that the content key request should be retried because the key response was not set soon enough either
-             due the initial request/response was taking too long, or a lease was expiring in the meantime.
-             */
+        /*
+         Indicates that the content key request should be retried because the key response was not set soon enough either
+         due the initial request/response was taking too long, or a lease was expiring in the meantime.
+         */
         case AVContentKeyRequest.RetryReason.timedOut:
             shouldRetry = true
-            
-            /*
-             Indicates that the content key request should be retried because a key response with expired lease was set on the
-             previous content key request.
-             */
+
+        /*
+         Indicates that the content key request should be retried because a key response with expired lease was set on the
+         previous content key request.
+         */
         case AVContentKeyRequest.RetryReason.receivedResponseWithExpiredLease:
             shouldRetry = true
-            
-            /*
-             Indicates that the content key request should be retried because an obsolete key response was set on the previous
-             content key request.
-             */
+
+        /*
+         Indicates that the content key request should be retried because an obsolete key response was set on the previous
+         content key request.
+         */
         case AVContentKeyRequest.RetryReason.receivedObsoleteContentKey:
             shouldRetry = true
-            
+
         default:
             break
         }
-        
+
         return shouldRetry
     }
-    
+
     // Informs the receiver a content key request has failed.
     public func contentKeySession(
         _ session: AVContentKeySession,
@@ -173,20 +196,20 @@ import Logging
             metadata: [
                 "tag": "\(ContentKeyDelegate.tag)",
                 "request": "\(keyRequest)",
-                "error": "\(AVFoundationErrorDomainExplain(error: err).description)"
+                "error": "\(AVFoundationErrorDomainExplain.description(for: err as NSError))",
             ]
         )
     }
-    
+
     // MARK: API
-    
+
     private func handleStreamingContentKeyRequest(keyRequest: AVContentKeyRequest) {
         logger.debug(
             "Handle key request",
             metadata: ContentKeyDelegate.logMeta
         )
         guard let drmKey = DRMKeyID.from(keyRequest: keyRequest) else {
-                return
+            return
         }
         let isKeyExistsOnDisk = persistableContentKeyExistsOnDisk(withContentKeyIdentifier: drmKey.id)
         let shouldRequestKey = shouldRequestPersistableContentKey(withIdentifier: drmKey.id)
@@ -196,7 +219,7 @@ import Logging
             "isKeyExistsOnDisk": "\(isKeyExistsOnDisk)",
             "shouldRequestKey": "\(shouldRequestKey)",
         ]
-        
+
         if shouldRequestKey || isKeyExistsOnDisk {
             logger.debug("Request persistable key", metadata: meta)
             // Request a Persistable Key Request.
@@ -210,17 +233,16 @@ import Logging
                 meta["error"] = "\(error)"
                 logger.debug("Request persistable key failed", metadata: meta)
                 /*
-                This case will occur when the client gets a key loading request from an AirPlay Session.
-                You should answer the key request using an online key from your key server.
-                */
+                 This case will occur when the client gets a key loading request from an AirPlay Session.
+                 You should answer the key request using an online key from your key server.
+                 */
                 provideOnlinekey(from: keyRequest, with: drmKey)
             }
-            
+
             return
         }
         logger.debug("Skip request persistable key", metadata: meta)
         provideOnlinekey(from: keyRequest, with: drmKey)
-
     }
 
     private func provideOnlinekey(
@@ -235,27 +257,33 @@ import Logging
                 "Cannot provide online key",
                 metadata: ["reason": "Missing license provider"]
             )
+            assertionFailure("Missing license provider")
             return
         }
-        
+
         let applicationCertificate = licenseProvider.requestApplicationCertificate()
+        let startDate = Date()
+        logger.debug("Key request start", metadata: logMeta)
         keyRequest.makeStreamingContentKeyRequestData(
             forApp: applicationCertificate,
             contentIdentifier: key.data,
             options: [AVContentKeyRequestProtocolVersionsKey: [1]],
-            completionHandler: {[weak self](data, error) in
+            completionHandler: { [weak self] data, error in
+                logMeta["duration"] = "\(Date().timeIntervalSince(startDate))"
                 guard let spcData = data else {
+                    logMeta["reason"] = "no spc data"
                     if let error = error {
                         logMeta["error"] = "\(error)"
                     }
-                    logger.warning("Cannot get spc data", metadata: logMeta)
+                    logger.warning("Key request failed", metadata: logMeta)
                     return
                 }
+                logger.debug("Key request succeeded", metadata: logMeta)
                 self?.previousRequest = keyRequest
                 self?.requestContentKeyFromKeySecurityModule(
                     spcData: spcData,
                     assetID: key.id
-                ) { (data, error) in
+                ) { data, error in
                     guard let ckcData = data else {
                         if let error = error {
                             logMeta["error"] = "\(error)"
@@ -270,12 +298,12 @@ import Logging
             }
         )
     }
-    
-    
+
     func renewLicense() {
         guard let request = previousRequest,
-            request.status != .cancelled,
-            request.status != .failed else { return }
+              request.status != .cancelled,
+              request.status != .failed else { return }
+        logger.debug("Will renew license", metadata: ContentKeyDelegate.logMeta)
         contentKeySession?.renewExpiringResponseData(for: request)
     }
 }

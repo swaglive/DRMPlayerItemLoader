@@ -9,7 +9,7 @@
 
 import AVFoundation
 
-struct ContentKeyManager {
+class ContentKeyManager {
     let contentKeySession: AVContentKeySession
     
     /**
@@ -30,7 +30,6 @@ struct ContentKeyManager {
         contentKeyDelegate.licenseProvider = licenseProvider
         contentKeyDelegateQueue = DispatchQueue(label: "com.swag.contentKeyDelegateQueue-\(UUID().uuidString)")
         contentKeySession.setDelegate(contentKeyDelegate, queue: contentKeyDelegateQueue)
-
     }
     
 }
