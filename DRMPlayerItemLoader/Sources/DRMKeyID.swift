@@ -10,7 +10,7 @@ import Foundation
 import Logging
 
 class DRMKeyID {
-    static let tag = "DRMKey"
+    static let tag = "DRM Key"
     var id: String {
         stringValue
     }

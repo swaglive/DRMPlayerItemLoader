@@ -11,9 +11,9 @@ import AVFoundation
 
 extension AVPlayerItem {
     var lastErrorLog: AVPlayerItemErrorLogEvent? {
-        return self.errorLog()?.events.last
+        errorLog()?.events.last
     }
     var lastAccessLog: AVPlayerItemAccessLogEvent? {
-        return self.accessLog()?.events.last
+        accessLog()?.events.last
     }
 }

@@ -6,9 +6,9 @@
 //  Copyright © 2020 Machipopo Corp. All rights reserved.
 //
 
-import Foundation
-import AVKit
 import AVFoundation
+import AVKit
+import Foundation
 import Logging
 
 let logger = Logger(label: Bundle.main.bundleIdentifier ?? "drmPlayer")
@@ -26,8 +26,8 @@ let logger = Logger(label: Bundle.main.bundleIdentifier ?? "drmPlayer")
 
 @objcMembers
 @objc public class PlayerItemLoader: NSObject {
-    private let urlString: String
-    private let assetOptions: [String : Any]?
+    public let assetURL: URL
+    private let assetOptions: [String: Any]?
     private let contentKey: String?
     public let identifier: String?
 
@@ -35,153 +35,181 @@ let logger = Logger(label: Bundle.main.bundleIdentifier ?? "drmPlayer")
     public private(set) var playerItem: AVPlayerItem?
 
     private weak var delegate: PlayerItemUpdateDelegate?
-        
-    /// A Bool tracking if the AVPlayerItem.status has changed to .readyToPlay for the current AssetPlaybackManager.playerItem.
-    private var readyForPlayback = false
 
+    private var keyValueObservations: [NSKeyValueObservation] = []
+    private var notificationRegistrations: [NSObjectProtocol] = []
     /// The `NSKeyValueObservation` for the KVO on \AVPlayerItem.status.
-    private var playerItemObserver: NSKeyValueObservation?
-
-    private var loadedObserver: NSKeyValueObservation?
     private var contentKeyManager: ContentKeyManager?
 
     /// Ther `renewTimer` is an optional timer for renew drm license. It can be invoke by
     private var renewTimer: Timer?
-    public init(identifier: String?, url: String, assetOptions: [String : Any]? = nil, contentKey: String? = nil) {
+    public init(
+        identifier: String?,
+        assetURL: URL,
+        assetOptions: [String: Any]? = nil,
+        contentKey: String? = nil
+    ) {
         self.identifier = identifier
-        urlString = url
+        self.assetURL = assetURL
         self.assetOptions = assetOptions
         self.contentKey = contentKey
 
         super.init()
     }
-    
-    deinit {        
+
+    deinit {
         NotificationCenter.default.removeObserver(self)
-        loadedObserver?.invalidate()
-        playerItemObserver?.invalidate()
-    }
-    
-    public func invalidateTimer() {
+        keyValueObservations.forEach { $0.invalidate() }
         renewTimer?.invalidate()
     }
-    
-    public func load(with delegate: PlayerItemUpdateDelegate) {
-        guard let url = URL(string: urlString) else { return }
+
+    public func stopRenewing() {
+        renewTimer?.invalidate()
+        renewTimer = nil
+    }
+
+    public func load(
+        with delegate: PlayerItemUpdateDelegate,
+        renewInterval: TimeInterval = 0
+    ) {
         self.delegate = delegate
         contentKeyManager = ContentKeyManager(licenseProvider: delegate.licenseProvider)
-        loadAsset(url: url)
+        loadAsset()
+        scheduleRenewProcess(interval: renewInterval)
     }
-    
-    public func scheduleRenewProcess(interval: TimeInterval) {
-        let timer = Timer(timeInterval: interval, target: self, selector: #selector(renewTimerFired(timer:)), userInfo: nil, repeats: true)
+
+    private func scheduleRenewProcess(interval: TimeInterval) {
+        stopRenewing()
+        guard interval > 0 else {
+            return
+        }
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
+            self?.renewLicense()
+        }
         renewTimer = timer
         RunLoop.main.add(timer, forMode: .common)
     }
-    
-    private func loadAsset(url: URL) {
-        readyForPlayback = false
-        let asset = AVURLAsset(url: url, options: assetOptions)
-        
+
+    private func loadAsset() {
+        let asset = AVURLAsset(url: assetURL, options: assetOptions)
         contentKeyManager?.contentKeySession.addContentKeyRecipient(asset)
         if let contentKey = contentKey {
             contentKeyManager?.contentKeyDelegate.requestPersistableContentKeys(for: contentKey)
         }
-
-        let assetItem = AssetItem(urlAsset: asset, playableHandler: { [weak self] (asset) in
-            self?.didAssetPlayable(asset)
+        let assetItem = AssetItem(urlAsset: asset, playableHandler: { [weak self] asset in
+            self?.onAssetBecomingPlayable(asset)
         })
         self.assetItem = assetItem
     }
-    
-    private func didAssetPlayable(_ asset: AVURLAsset) {
+
+    private func onAssetBecomingPlayable(_ asset: AVURLAsset) {
         let item = AVPlayerItem(asset: asset)
         playerItem = item
         delegate?.didAssetIsReady(with: self)
         addObservers(for: item)
     }
-    
-    private func addObservers(for playerItem: AVPlayerItem) {
-        playerItemObserver?.invalidate()
-        loadedObserver?.invalidate()
-        readyForPlayback = true
-        
-        NotificationCenter.default.addObserver(self, selector: #selector(self.onErrorLogEntryNotification), name: .AVPlayerItemNewErrorLogEntry, object: playerItem)
-        NotificationCenter.default.addObserver(self, selector: #selector(self.onAccessLogEntryNotification), name: .AVPlayerItemNewAccessLogEntry, object: playerItem)
-        NotificationCenter.default.addObserver(self, selector:#selector(self.didPlayToEndTime), name: .AVPlayerItemDidPlayToEndTime, object: playerItem)
 
-        playerItemObserver = playerItem.observe(\AVPlayerItem.status, options: [.new, .initial]) { [weak self] (item, _) in
-            self?.delegate?.didStatusChange(item, status: item.status)
-        }
-        
-        loadedObserver = playerItem.observe(\AVPlayerItem.loadedTimeRanges, options: [.new]) { [weak self] (item, _) in
-            self?.calcLoadedProgress(item)
-        }
+    private func addObservers(for playerItem: AVPlayerItem) {
+        notificationRegistrations = [
+            NotificationCenter.default.addObserver(
+                forName: .AVPlayerItemNewErrorLogEntry,
+                object: playerItem,
+                queue: .main) { [weak self] notif in
+                    self?.onErrorLogEntryNotification(notification: notif)
+                },
+            NotificationCenter.default.addObserver(
+                forName: .AVPlayerItemNewErrorLogEntry,
+                object: playerItem,
+                queue: .main) { [weak self] notif in
+                    self?.onErrorLogEntryNotification(notification: notif)
+                },
+            NotificationCenter.default.addObserver(
+                forName: .AVPlayerItemNewAccessLogEntry,
+                object: playerItem,
+                queue: .main) { [weak self] notif in
+                    self?.onAccessLogEntryNotification(notification: notif)
+                },
+            NotificationCenter.default.addObserver(
+                forName: .AVPlayerItemDidPlayToEndTime,
+                object: playerItem,
+                queue: .main) { [weak self] notif in
+                    self?.didPlayToEndTime(notification: notif)
+                },
+        ]
+
+        keyValueObservations.forEach { $0.invalidate() }
+        keyValueObservations = [
+            playerItem.observe(\AVPlayerItem.status, options: [.new, .initial]) { [weak self] item, _ in
+                self?.delegate?.didStatusChange(item, status: item.status)
+            },
+            playerItem.observe(\AVPlayerItem.loadedTimeRanges, options: [.new]) { [weak self] item, _ in
+                self?.calcLoadedProgress(item)
+            },
+        ]
     }
-    
+
     private func calcLoadedProgress(_ item: AVPlayerItem) {
         let duration = item.duration.seconds
         var loadedTimeRangeSeconds: Double = 0
         if let startSeconds = item.loadedTimeRanges.first?.timeRangeValue.start.seconds,
-            let durationSeconds = item.loadedTimeRanges.first?.timeRangeValue.duration.seconds {
+           let durationSeconds = item.loadedTimeRanges.first?.timeRangeValue.duration.seconds {
             loadedTimeRangeSeconds = durationSeconds + startSeconds
         }
-        let progress: CGFloat = duration > 0 ? (CGFloat(loadedTimeRangeSeconds / duration)) : 0
+        let progress: CGFloat = duration > 0 ? CGFloat(loadedTimeRangeSeconds / duration) : 0
 
         delegate?.didDownloadProgress?(progress)
     }
-    
-    @objc private func renewTimerFired(timer: Timer) {
+
+    private func renewLicense() {
         guard let item = playerItem else { return }
         delegate?.playerItemWillRenewLicense?(item)
         contentKeyManager?.contentKeyDelegate.renewLicense()
     }
 
-    @objc func onErrorLogEntryNotification(notification: Notification) {
-        guard let item = notification.object as? AVPlayerItem,let lastEvent = item.lastErrorLog else { return }
+    private func onErrorLogEntryNotification(notification: Notification) {
+        guard let item = notification.object as? AVPlayerItem, let lastEvent = item.lastErrorLog else { return }
         delegate?.didErrorLogEntry?(item, errorLog: lastEvent)
     }
 
-    @objc func onAccessLogEntryNotification(notification: Notification) {
-        guard let item = notification.object as? AVPlayerItem,let lastEvent = item.lastAccessLog else { return }
+    private func onAccessLogEntryNotification(notification: Notification) {
+        guard let item = notification.object as? AVPlayerItem, let lastEvent = item.lastAccessLog else { return }
         delegate?.didAccessLogEntry?(item, accessLog: lastEvent)
     }
-    
-    @objc func didPlayToEndTime(notification: Notification) {
+
+    private func didPlayToEndTime(notification: Notification) {
         guard let item = notification.object as? AVPlayerItem else { return }
         delegate?.didPlayToEndTime?(item)
     }
-    
+
     public var loadedTimeRangeSeconds: CGFloat {
         guard let playerItem = playerItem,
-            playerItem.loadedTimeRanges.count > 0,
-            let timeRange = playerItem.loadedTimeRanges.first as? CMTimeRange
-            else {
+              playerItem.loadedTimeRanges.count > 0,
+              let timeRange = playerItem.loadedTimeRanges.first as? CMTimeRange
+        else {
             return 0
         }
-        
-        return CGFloat( CMTimeGetSeconds(timeRange.duration) + CMTimeGetSeconds(timeRange.start) )
+
+        return CGFloat(CMTimeGetSeconds(timeRange.duration) + CMTimeGetSeconds(timeRange.start))
     }
-    
+
     public var currentTimeSeconds: CGFloat {
         guard let playerItem = playerItem else {
             return 0
         }
-        return CGFloat( CMTimeGetSeconds(playerItem.currentTime()) )
+        return CGFloat(CMTimeGetSeconds(playerItem.currentTime()))
     }
-    
+
     public var duration: CGFloat {
         guard let playerItem = playerItem else {
             return 0
         }
-        return CGFloat( CMTimeGetSeconds(playerItem.duration) )
+        return CGFloat(CMTimeGetSeconds(playerItem.duration))
     }
-    
+
     public var playProgress: CGFloat {
         guard duration > 0 else {
             return 0
         }
-       return currentTimeSeconds / duration
+        return currentTimeSeconds / duration
     }
-
 }
