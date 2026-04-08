@@ -1,5 +1,5 @@
 //
-//  AVFoundationErrorDomainExplain.swift
+//  AVFoundationErrorMessage.swift
 //  drm
 //
 //  Created by peter on 2020/2/10.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-public struct AVFoundationErrorDomainExplain {
+public struct AVFoundationErrorMessage {
     public static func description(for error: NSError) -> String {
         if let reason = error.userInfo[NSLocalizedFailureReasonErrorKey] as? String {
             return reason

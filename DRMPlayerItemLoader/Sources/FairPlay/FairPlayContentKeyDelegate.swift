@@ -3,7 +3,7 @@
  See LICENSE.txt for this sample’s licensing information
 
  Abstract:
- `ContentKeyDelegate` is a class that implements the `AVContentKeySessionDelegate` protocol to respond to content key
+ `FairPlayContentKeyDelegate` is a class that implements the `AVContentKeySessionDelegate` protocol to respond to content key
  requests using FairPlay Streaming.
  */
 
@@ -11,10 +11,10 @@ import AVFoundation
 import Logging
 
 @objcMembers
-@objc public class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
+@objc public class FairPlayContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
     static let tag = "DRM Key Delegate"
     static let logMeta: Logger.Metadata = ["tag": "\(tag)"]
-    weak var licenseProvider: FairPlayLicenseProvider?
+    var licenseProvider: FairPlayLicenseProvider?
     weak var contentKeySession: AVContentKeySession?
 
     // MARK: Types
@@ -65,7 +65,7 @@ import Logging
         guard let licenseProvider = licenseProvider else {
             logger.warning(
                 "Missing license provider",
-                metadata: ContentKeyDelegate.logMeta
+                metadata: FairPlayContentKeyDelegate.logMeta
             )
             assertionFailure("Missing license provider")
             return
@@ -95,7 +95,7 @@ import Logging
     ///
     /// - Parameter asset: The `Asset` to preload keys for.
     func requestPersistableContentKeys(for contentKey: String) {
-        logger.debug("Request persistable keys", metadata: ContentKeyDelegate.logMeta)
+        logger.debug("Request persistable keys", metadata: FairPlayContentKeyDelegate.logMeta)
         guard let drmKey = DRMKeyID.from(key: contentKey) else {
             return
         }
@@ -194,9 +194,9 @@ import Logging
         logger.warning(
             "Key request failed",
             metadata: [
-                "tag": "\(ContentKeyDelegate.tag)",
+                "tag": "\(FairPlayContentKeyDelegate.tag)",
                 "request": "\(keyRequest)",
-                "error": "\(AVFoundationErrorDomainExplain.description(for: err as NSError))",
+                "error": "\(AVFoundationErrorMessage.description(for: err as NSError))",
             ]
         )
     }
@@ -206,7 +206,7 @@ import Logging
     private func handleStreamingContentKeyRequest(keyRequest: AVContentKeyRequest) {
         logger.debug(
             "Handle key request",
-            metadata: ContentKeyDelegate.logMeta
+            metadata: FairPlayContentKeyDelegate.logMeta
         )
         guard let drmKey = DRMKeyID.from(keyRequest: keyRequest) else {
             return
@@ -214,7 +214,7 @@ import Logging
         let isKeyExistsOnDisk = persistableContentKeyExistsOnDisk(withContentKeyIdentifier: drmKey.id)
         let shouldRequestKey = shouldRequestPersistableContentKey(withIdentifier: drmKey.id)
         var meta: Logger.Metadata = [
-            "tag": "\(ContentKeyDelegate.tag)",
+            "tag": "\(FairPlayContentKeyDelegate.tag)",
             "key": .dictionary(drmKey.debugForm),
             "isKeyExistsOnDisk": "\(isKeyExistsOnDisk)",
             "shouldRequestKey": "\(shouldRequestKey)",
@@ -249,7 +249,7 @@ import Logging
         from keyRequest: AVContentKeyRequest,
         with key: DRMKeyID
     ) {
-        var logMeta = ContentKeyDelegate.logMeta
+        var logMeta = FairPlayContentKeyDelegate.logMeta
         logMeta["key"] = .dictionary(key.debugForm)
         logger.debug("Will provide online key", metadata: logMeta)
         guard let licenseProvider = licenseProvider else {
@@ -303,7 +303,7 @@ import Logging
         guard let request = previousRequest,
               request.status != .cancelled,
               request.status != .failed else { return }
-        logger.debug("Will renew license", metadata: ContentKeyDelegate.logMeta)
+        logger.debug("Will renew license", metadata: FairPlayContentKeyDelegate.logMeta)
         contentKeySession?.renewExpiringResponseData(for: request)
     }
 }
