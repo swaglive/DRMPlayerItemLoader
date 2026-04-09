@@ -40,11 +40,9 @@ public protocol ContentKeyManaging: AnyObject {
 
   private var keyValueObservations: [NSKeyValueObservation] = []
   private var notificationRegistrations: [NSObjectProtocol] = []
-  /// The `NSKeyValueObservation` for the KVO on \AVPlayerItem.status.
   private var contentKeyManager: ContentKeyManaging?
-
-  /// Ther `renewTimer` is an optional timer for renew drm license. It can be invoke by
   private var renewTimer: Timer?
+  
   public convenience init(
     identifier: String?,
     assetURL: URL,
@@ -53,7 +51,7 @@ public protocol ContentKeyManaging: AnyObject {
     self.init(
       identifier: identifier,
       assetURL: assetURL,
-      contentKeyManager: FairPlayContentKeyManager(licenseProvider: licenseProvider),
+      contentKeyManager: FairPlayContentKeyManager(licenseProvider: licenseProvider)
     )
   }
 
@@ -65,7 +63,7 @@ public protocol ContentKeyManaging: AnyObject {
     self.init(
       identifier: identifier,
       assetURL: assetURL,
-      contentKeyManager: ClearKeyContentKeyManager(contentKeyProvider: contentKeyProvider),
+      contentKeyManager: ClearKeyContentKeyManager(contentKeyProvider: contentKeyProvider)
     )
   }
 
@@ -130,12 +128,6 @@ public protocol ContentKeyManaging: AnyObject {
 
   private func addObservers(for playerItem: AVPlayerItem) {
     notificationRegistrations = [
-      NotificationCenter.default.addObserver(
-        forName: .AVPlayerItemNewErrorLogEntry,
-        object: playerItem,
-        queue: .main) { [weak self] notif in
-          self?.onErrorLogEntryNotification(notification: notif)
-        },
       NotificationCenter.default.addObserver(
         forName: .AVPlayerItemNewErrorLogEntry,
         object: playerItem,

@@ -21,7 +21,7 @@ final class ClearKeyContentKeyDelegate: NSObject, Sendable, AVContentKeySessionD
     _ session: AVContentKeySession,
     didProvide keyRequest: AVContentKeyRequest,
   ) {
-    var meta = FairPlayContentKeyDelegate.logMeta
+    var meta = ClearKeyContentKeyDelegate.logMeta
     guard
       let kid = keyRequest.identifier
     else {
@@ -49,7 +49,7 @@ final class ClearKeyContentKeyDelegate: NSObject, Sendable, AVContentKeySessionD
       )
     } catch {
       keyRequest.processContentKeyResponseError(error)
-      var meta = FairPlayContentKeyDelegate.logMeta
+      var meta = ClearKeyContentKeyDelegate.logMeta
       meta["error"] = "\(error)"
       logger.warning("Cannot fetch content key", metadata: meta)
     }
