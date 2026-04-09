@@ -57,6 +57,18 @@ public protocol ContentKeyManaging: AnyObject {
     )
   }
 
+  public convenience init(
+    identifier: String?,
+    assetURL: URL,
+    clearKeyContentKeyProvider contentKeyProvider: ClearKeyContentKeyProviding
+  ) {
+    self.init(
+      identifier: identifier,
+      assetURL: assetURL,
+      contentKeyManager: ClearKeyContentKeyManager(contentKeyProvider: contentKeyProvider),
+    )
+  }
+
   public init(
     identifier: String?,
     assetURL: URL,
