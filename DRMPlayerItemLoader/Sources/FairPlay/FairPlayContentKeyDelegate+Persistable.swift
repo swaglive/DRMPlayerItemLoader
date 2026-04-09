@@ -9,7 +9,7 @@
 import AVFoundation
 import Logging
 
-extension ContentKeyDelegate {
+extension FairPlayContentKeyDelegate {
     /*
      Provides the receiver with a new content key request that allows key persistence.
      Will be invoked by an AVContentKeyRequest as the result of a call to
@@ -45,7 +45,7 @@ extension ContentKeyDelegate {
         didUpdatePersistableContentKey persistableContentKey: Data,
         forContentKeyIdentifier keyIdentifier: Any
     ) {
-        var logMeta = ContentKeyDelegate.logMeta
+        var logMeta = FairPlayContentKeyDelegate.logMeta
         logger.debug("Will update persistable key", metadata: logMeta)
         /*
          The key ID is the URI from the EXT-X-KEY tag in the playlist (e.g. "skd://key65") and the
@@ -82,7 +82,7 @@ extension ContentKeyDelegate {
     func handlePersistableContentKeyRequest(
         keyRequest: AVPersistableContentKeyRequest
     ) {
-        var logMeta = ContentKeyDelegate.logMeta
+        var logMeta = FairPlayContentKeyDelegate.logMeta
         logMeta["request"] = "\(keyRequest)"
         logger.debug("Will handle persistable key", metadata: logMeta)
         guard let drmKey = DRMKeyID.from(keyRequest: keyRequest) else {
@@ -118,7 +118,7 @@ extension ContentKeyDelegate {
         keyRequest: AVPersistableContentKeyRequest,
         drmKey: DRMKeyID
     ) {
-        var logMeta = ContentKeyDelegate.logMeta
+        var logMeta = FairPlayContentKeyDelegate.logMeta
         logMeta["key"] = .dictionary(drmKey.debugForm)
         logger.debug("Will make key request", metadata: logMeta)
         guard let licenseProvider = licenseProvider else {
@@ -157,7 +157,7 @@ extension ContentKeyDelegate {
             spcData: spcData,
             assetID: assetID
         ) { [weak self] data, error in
-            var logMeta = ContentKeyDelegate.logMeta
+            var logMeta = FairPlayContentKeyDelegate.logMeta
             guard let ckcData = data else {
                 if let error = error {
                     logMeta["error"] = "\(error)"
@@ -201,7 +201,7 @@ extension ContentKeyDelegate {
 
     func deleteAllPeristableContentKeys() {
         var logMeta: Logger.Metadata = [
-            "tag": "\(ContentKeyDelegate.tag)",
+            "tag": "\(FairPlayContentKeyDelegate.tag)",
         ]
         do {
             logger.debug("Will retrieve keys to delete", metadata: logMeta)
@@ -226,7 +226,7 @@ extension ContentKeyDelegate {
     ///
     /// - Parameter contentKeyIdentifier: The host value of an `AVPersistableContentKeyRequest`. (i.e. "tweleve" in "skd://tweleve").
     func deletePeristableContentKey(withContentKeyIdentifier contentKeyIdentifier: String) {
-        var logMeta = ContentKeyDelegate.logMeta
+        var logMeta = FairPlayContentKeyDelegate.logMeta
         logMeta["keyId"] = "\(contentKeyIdentifier)"
         logger.debug("Will delete persistable key", metadata: logMeta)
         guard persistableContentKeyExistsOnDisk(withContentKeyIdentifier: contentKeyIdentifier) else { return }
