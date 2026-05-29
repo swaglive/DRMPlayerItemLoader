@@ -37,11 +37,19 @@ final class ClearKeyContentKeyDelegate: NSObject, Sendable, AVContentKeySessionD
       return
     }
     Task { [weak self] in
-      await self?.loadContentKey(from: keyURL, for: keyRequest)
+      await self?.loadContentKey(
+        from: keyURL,
+        for: keyRequest,
+        in: session
+      )
     }
   }
-  
-  private func loadContentKey(from url: URL, for keyRequest: AVContentKeyRequest) async {
+
+  private func loadContentKey(
+    from url: URL,
+    for keyRequest: AVContentKeyRequest,
+    in session: AVContentKeySession,
+  ) async {
     do {
       let (key, iv) = try await contentKeyProvider.loadContentKey(from: url)
       keyRequest.processContentKeyResponse(
